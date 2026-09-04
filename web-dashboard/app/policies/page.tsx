@@ -1,0 +1,279 @@
+"use client";
+import { useState, useEffect } from "react";
+import { Save, Plus, Trash2, ShieldCheck, Activity, Upload } from "lucide-react";
+import { api } from "@/lib/api";
+
+export default function PoliciesPage() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Selection State
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+
+  // Create New Form State
+
+  // File Upload State
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    setIsUploading(true);
+    try {
+      const res = await api.post("/policies/upload-sop", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      alert("SOP Document uploaded and extracted successfully!");
+      fetchTemplates();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to upload document.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newType, setNewType] = useState("HOT_WORK");
+  const [ppe, setPpe] = useState(["Helmet", "Safety_Shoes"]);
+  const [newPpe, setNewPpe] = useState("");
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      const res = await api.get("/policies/templates");
+      setTemplates(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addPpe = () => {
+    if (newPpe && !ppe.includes(newPpe)) {
+      setPpe([...ppe, newPpe.replace(/\s+/g, "_")]);
+      setNewPpe("");
+    }
+  };
+
+  const removePpe = (item: string) => {
+    setPpe(ppe.filter(p => p !== item));
+  };
+
+  const saveNewTemplate = async () => {
+    if (!newTitle) return alert("Title is required");
+    
+    const dynamic_rules = {
+      required_ppe: ppe,
+      severity_mapping: {
+        CRITICAL: "SUSPEND_PERMIT",
+        MEDIUM: "ISSUE_WARNING"
+      }
+    };
+
+    try {
+      await api.post("/policies/templates", {
+        title: newTitle,
+        permit_type: newType,
+        dynamic_rules: dynamic_rules
+      });
+      setIsCreating(false);
+      setNewTitle("");
+      setPpe(["Helmet", "Safety_Shoes"]);
+      fetchTemplates(); // Refresh list
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save template");
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900">Dynamic Policy Configurator</h2>
+          <p className="text-slate-500 mt-1">Configure Context-Aware AI Rules injected directly into Gemini.</p>
+        </div>
+        {!isCreating && (
+          <div className="flex gap-4">
+            <div>
+              <input type="file" id="sop-upload" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+              <label htmlFor="sop-upload" className="cursor-pointer bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm">
+                <Upload size={18} />
+                {isUploading ? "Extracting AI..." : "Upload Safety Standard / PDF"}
+              </label>
+            </div>
+            <button 
+              onClick={() => { setIsCreating(true); setSelectedTemplate(null); }}
+              className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              <Plus size={18} />
+              Create New Template
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
+        {/* Left Column: Existing Templates */}
+        <div className="lg:col-span-1 space-y-4">
+          <h3 className="font-bold text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="text-blue-500" size={20} /> Active Templates
+          </h3>
+          
+          {loading ? (
+            <p className="text-slate-500 animate-pulse">Loading templates...</p>
+          ) : templates.length === 0 ? (
+            <p className="text-sm text-slate-500 border border-dashed border-slate-200 p-4 rounded-xl">No templates found.</p>
+          ) : (
+            templates.map((t, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => { setSelectedTemplate(t); setIsCreating(false); }}
+                className={`bg-white p-4 rounded-xl shadow-sm border transition-colors cursor-pointer group ${selectedTemplate?.id === t.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300'}`}
+              >
+                <p className="text-xs font-bold text-blue-600 mb-1">{t.permit_type}</p>
+                <p className="font-bold text-slate-800 mb-2">{t.title}</p>
+                <div className="flex flex-wrap gap-1">
+                  {t.dynamic_rules.required_ppe?.map((p: string, i: number) => (
+                    <span key={i} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{p}</span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Right Column: Editor / Viewer */}
+        <div className="lg:col-span-2">
+          {isCreating ? (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <h3 className="text-xl font-bold text-slate-900 mb-6">Draft New Template</h3>
+              
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Template Title</label>
+                    <input 
+                      type="text" 
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      placeholder="e.g., Chemical Room Rules"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Permit Type</label>
+                    <select 
+                      value={newType}
+                      onChange={e => setNewType(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-500 text-sm bg-white"
+                    >
+                      <option value="HOT_WORK">HOT_WORK</option>
+                      <option value="WORKING_AT_HEIGHT">WORKING_AT_HEIGHT</option>
+                      <option value="CONFINED_SPACE">CONFINED_SPACE</option>
+                      <option value="ELECTRICAL_LOTO">ELECTRICAL_LOTO</option>
+                      <option value="GENERAL">GENERAL</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Required AI Detections (PPE)</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {ppe.map((item, idx) => (
+                      <div key={idx} className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm border border-slate-200">
+                        {item}
+                        <button onClick={() => removePpe(item)} className="text-slate-400 hover:text-red-500">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={newPpe}
+                      onChange={(e) => setNewPpe(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addPpe()}
+                      placeholder="e.g. Gas_Respirator, Face_Shield"
+                      className="flex-1 border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-500 text-sm"
+                    />
+                    <button 
+                      onClick={addPpe}
+                      className="bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-slate-200 transition-colors"
+                    >
+                      <Plus size={16} /> Add
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                    <Activity size={12} /> These keywords are injected straight into Gemini's validation prompt.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                  <button 
+                    onClick={() => setIsCreating(false)}
+                    className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={saveNewTemplate}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm text-sm"
+                  >
+                    <Save size={18} />
+                    Save Template
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : selectedTemplate ? (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-2xl font-bold text-slate-900 mb-1">{selectedTemplate.title}</h3>
+              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg mb-6">
+                Type: {selectedTemplate.permit_type}
+              </span>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-3">Target Object Detection (PPE)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTemplate.dynamic_rules.required_ppe?.map((p: string, i: number) => (
+                      <div key={i} className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm border border-emerald-200 font-medium">
+                        <ShieldCheck size={16} /> {p}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <hr className="border-slate-100" />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Severity Mapping (JSON)</label>
+                  <p className="text-xs text-slate-500 mb-3">This configuration maps AI severity findings directly to backend enforcement actions.</p>
+                  <pre className="bg-slate-900 text-emerald-400 p-4 rounded-lg text-sm overflow-x-auto shadow-inner">
+{JSON.stringify(selectedTemplate.dynamic_rules.severity_mapping, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl h-64 flex flex-col items-center justify-center text-slate-400">
+              <ShieldCheck size={48} className="mb-4 text-slate-300" />
+              <p>Select a template on the left to view rules, or create a new one.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
