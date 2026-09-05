@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, Plus, Trash2, ShieldCheck, Activity, Upload } from "lucide-react";
+import { Save, Plus, Trash2, ShieldCheck, Activity, Upload, Sun, Thermometer, HeartPulse, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function PoliciesPage() {
@@ -9,8 +9,6 @@ export default function PoliciesPage() {
   
   // Selection State
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-
-  // Create New Form State
 
   // File Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -42,6 +40,13 @@ export default function PoliciesPage() {
   const [newType, setNewType] = useState("HOT_WORK");
   const [ppe, setPpe] = useState(["Helmet", "Safety_Shoes"]);
   const [newPpe, setNewPpe] = useState("");
+
+  // Industrial Hygiene & Toyota STOP 6 States
+  const [minLux, setMinLux] = useState(300);
+  const [maxTemp, setMaxTemp] = useState(34);
+  const [maxHumidity, setMaxHumidity] = useState(75);
+  const [checkErgonomics, setCheckErgonomics] = useState(true);
+  const [stop6Category, setStop6Category] = useState("STOP_6_6_HEAT_HAZARDS");
 
   useEffect(() => {
     fetchTemplates();
@@ -77,7 +82,14 @@ export default function PoliciesPage() {
       severity_mapping: {
         CRITICAL: "SUSPEND_PERMIT",
         MEDIUM: "ISSUE_WARNING"
-      }
+      },
+      industrial_hygiene: {
+        min_lux: Number(minLux),
+        max_temperature_c: Number(maxTemp),
+        max_humidity_pct: Number(maxHumidity),
+        check_ergonomic_posture: checkErgonomics
+      },
+      toyota_stop6_category: stop6Category
     };
 
     try {
@@ -89,6 +101,10 @@ export default function PoliciesPage() {
       setIsCreating(false);
       setNewTitle("");
       setPpe(["Helmet", "Safety_Shoes"]);
+      setMinLux(300);
+      setMaxTemp(34);
+      setMaxHumidity(75);
+      setCheckErgonomics(true);
       fetchTemplates(); // Refresh list
     } catch (error) {
       console.error(error);
@@ -141,12 +157,24 @@ export default function PoliciesPage() {
                 onClick={() => { setSelectedTemplate(t); setIsCreating(false); }}
                 className={`bg-white p-4 rounded-xl shadow-sm border transition-colors cursor-pointer group ${selectedTemplate?.id === t.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300'}`}
               >
-                <p className="text-xs font-bold text-blue-600 mb-1">{t.permit_type}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-blue-600">{t.permit_type}</p>
+                  {t.dynamic_rules?.toyota_stop6_category && (
+                    <span className="text-[9px] px-1.5 py-0.5 bg-rose-50 text-rose-700 font-bold rounded border border-rose-200">
+                      STOP 6
+                    </span>
+                  )}
+                </div>
                 <p className="font-bold text-slate-800 mb-2">{t.title}</p>
                 <div className="flex flex-wrap gap-1">
-                  {t.dynamic_rules.required_ppe?.map((p: string, i: number) => (
+                  {t.dynamic_rules?.required_ppe?.map((p: string, i: number) => (
                     <span key={i} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{p}</span>
                   ))}
+                  {t.dynamic_rules?.industrial_hygiene?.min_lux && (
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
+                      {t.dynamic_rules.industrial_hygiene.min_lux} Lux
+                    </span>
+                  )}
                 </div>
               </div>
             ))
@@ -221,6 +249,108 @@ export default function PoliciesPage() {
                   </p>
                 </div>
 
+                {/* Toyota STOP 6 Mapping */}
+                <div className="bg-rose-50/60 border border-rose-200 p-4 rounded-xl space-y-2">
+                  <label className="block text-sm font-bold text-rose-950 flex items-center gap-2">
+                    <ShieldAlert size={16} className="text-rose-600" />
+                    Toyota STOP 6 Standards Mapping
+                  </label>
+                  <p className="text-xs text-rose-700">
+                    Petakan izin kerja ini ke dalam 6 kategori kecelakaan fatal standar Toyota (TPS Safety).
+                  </p>
+                  <select 
+                    value={stop6Category}
+                    onChange={e => setStop6Category(e.target.value)}
+                    className="w-full border border-rose-300 rounded-lg p-2.5 outline-none focus:border-rose-500 text-sm bg-white font-medium text-slate-800"
+                  >
+                    <option value="STOP_6_1_APPARATUS">1. Apparatus (Mesin Bergerak / Terjepit / LOTO)</option>
+                    <option value="STOP_6_2_HEAVY_OBJECTS">2. Heavy Objects (Tertimpa Benda Berat / Crane / Hoist)</option>
+                    <option value="STOP_6_3_VEHICLES">3. Vehicles (Tabrakan Forklift / AGV / Jalur Pedestrian)</option>
+                    <option value="STOP_6_4_DROP_FALL">4. Drop / Fall (Jatuh dari Ketinggian / Scaffolding)</option>
+                    <option value="STOP_6_5_ELECTRIC_SHOCK">5. Electric Shock (Sengatan Listrik Tegangan Tinggi)</option>
+                    <option value="STOP_6_6_HEAT_HAZARDS">6. Heat / Fire (Kebakaran Pengelasan / Kimia B3 / Cairan Panas)</option>
+                    <option value="STOP_6_GENERAL">General Safety (Standar Umum Shopfloor)</option>
+                  </select>
+                </div>
+
+                {/* Industrial Hygiene & Health Configurator */}
+                <div className="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                        <HeartPulse size={16} className="text-emerald-600" />
+                        Industrial Hygiene & Health Configurator (Permenaker 5/2018)
+                      </h4>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        Parameter kesehatan lingkungan kerja yang diaudit otomatis oleh AI Vision & Sensor.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Minimum Lux */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <Sun size={14} className="text-amber-500" /> Pencahayaan Minimum (Min Lux)
+                      </label>
+                      <select 
+                        value={minLux}
+                        onChange={e => setMinLux(Number(e.target.value))}
+                        className="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"
+                      >
+                        <option value={100}>100 Lux — Gudang & Lorong Pedestrian</option>
+                        <option value={300}>300 Lux — Workshop Mesin, Pengelasan & Maintenance</option>
+                        <option value={500}>500 Lux — Perakitan Presisi / Inspeksi Cacat Bodi</option>
+                      </select>
+                      <p className="text-[11px] text-slate-500 mt-1">AI mengevaluasi kecukupan terang area kerja.</p>
+                    </div>
+
+                    {/* Heat & Humidity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <Thermometer size={14} className="text-red-500" /> Ambang Batas Iklim Kerja Panas
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[10px] text-slate-500">Maks Suhu (°C)</span>
+                          <input 
+                            type="number"
+                            value={maxTemp}
+                            onChange={e => setMaxTemp(Number(e.target.value))}
+                            className="w-full border border-slate-300 rounded-lg p-1.5 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500">Maks Lembab (%)</span>
+                          <input 
+                            type="number"
+                            value={maxHumidity}
+                            onChange={e => setMaxHumidity(Number(e.target.value))}
+                            className="w-full border border-slate-300 rounded-lg p-1.5 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ergonomics Toggle */}
+                  <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">AI Ergonomics Posture Assessment</p>
+                      <p className="text-[11px] text-slate-500">Deteksi risiko cedera tulang belakang (membungkuk ekstrim &gt;30° atau salah angkat beban).</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={checkErgonomics}
+                        onChange={e => setCheckErgonomics(e.target.checked)}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                   <button 
                     onClick={() => setIsCreating(false)}
@@ -256,6 +386,47 @@ export default function PoliciesPage() {
                     ))}
                   </div>
                 </div>
+                
+                {/* Toyota STOP 6 & Health Details */}
+                {selectedTemplate.dynamic_rules?.toyota_stop6_category && (
+                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl">
+                    <p className="text-xs font-bold text-rose-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <ShieldAlert size={14} /> Toyota STOP 6 Standard
+                    </p>
+                    <p className="text-sm font-bold text-rose-950">
+                      {selectedTemplate.dynamic_rules.toyota_stop6_category}
+                    </p>
+                  </div>
+                )}
+
+                {selectedTemplate.dynamic_rules?.industrial_hygiene && (
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
+                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <HeartPulse size={14} /> Industrial Hygiene & Health Parameters
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-1 text-xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                        <span className="text-slate-500 block">Min Illumination</span>
+                        <span className="font-bold text-slate-800 text-sm">
+                          {selectedTemplate.dynamic_rules.industrial_hygiene.min_lux || 300} Lux
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                        <span className="text-slate-500 block">Max Temp / Humidity</span>
+                        <span className="font-bold text-slate-800 text-sm">
+                          {selectedTemplate.dynamic_rules.industrial_hygiene.max_temperature_c || 34}°C / {selectedTemplate.dynamic_rules.industrial_hygiene.max_humidity_pct || 75}%
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                        <span className="text-slate-500 block">AI Ergonomics Check</span>
+                        <span className={`font-bold text-sm ${selectedTemplate.dynamic_rules.industrial_hygiene.check_ergonomic_posture ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          {selectedTemplate.dynamic_rules.industrial_hygiene.check_ergonomic_posture ? 'ENABLED' : 'DISABLED'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <hr className="border-slate-100" />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Severity Mapping (JSON)</label>

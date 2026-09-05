@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory, HeartPulse, Sun, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function SandboxPage() {
@@ -217,6 +217,54 @@ export default function SandboxPage() {
                   <div className="p-3 bg-emerald-950/50 border border-emerald-800/70 rounded-lg text-xs text-emerald-300 flex items-center gap-2">
                     <span>✅</span>
                     <span><b>Zero Infraction:</b> Seluruh pekerja dan area mematuhi SOP keselamatan 100%. Tidak ada tindakan penegakan yang diperlukan.</span>
+                  </div>
+                )}
+
+                {/* Toyota STOP 6 Standard Banner */}
+                {result.stop6_category && (
+                  <div className="p-3 bg-rose-950/50 border border-rose-800/70 rounded-lg text-xs text-rose-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <ShieldAlert size={14} className="text-rose-400" />
+                      Toyota STOP 6 Classification:
+                    </span>
+                    <span className="font-bold px-2 py-0.5 bg-rose-900/80 rounded border border-rose-700 text-rose-200">
+                      {result.stop6_category}
+                    </span>
+                  </div>
+                )}
+
+                {/* Industrial Hygiene & Health Assessment */}
+                {result.health_evaluation && (
+                  <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-lg space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-emerald-400 font-bold border-b border-emerald-900/50 pb-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <HeartPulse size={14} /> Industrial Hygiene Assessment (Permenaker 5/2018)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-slate-900/80 p-2 rounded border border-emerald-900/40">
+                        <span className="text-slate-400 flex items-center gap-1 mb-0.5">
+                          <Sun size={10} className="text-amber-400" /> Pencahayaan:
+                        </span>
+                        <span className="font-bold text-slate-200 block">
+                          {result.health_evaluation.lighting_condition || "ADEQUATE"}
+                        </span>
+                        <p className="text-slate-400 mt-0.5">{result.health_evaluation.lighting_notes}</p>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-emerald-900/40">
+                        <span className="text-slate-400 flex items-center gap-1 mb-0.5">
+                          <HeartPulse size={10} className="text-emerald-400" /> Postur Ergonomi:
+                        </span>
+                        <span className={`font-bold block ${
+                          result.health_evaluation.ergonomics_status === 'ERGONOMIC_STRAIN_RISK' 
+                            ? 'text-amber-300' 
+                            : 'text-emerald-300'
+                        }`}>
+                          {result.health_evaluation.ergonomics_status || "SAFE_POSTURE"}
+                        </span>
+                        <p className="text-slate-400 mt-0.5">{result.health_evaluation.ergonomics_notes}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
 

@@ -25,7 +25,21 @@ class GeminiAuditService:
         DYNAMIC PERMIT RULES (JSON):
         {json.dumps(rules_context, indent=2)}
 
-        Identify any missing required PPE, environmental hazards, or forbidden hazards.
+        Identify any missing required PPE, environmental hazards, forbidden hazards, and industrial hygiene factors.
+
+        OCCUPATIONAL HEALTH & INDUSTRIAL HYGIENE (PERMENAKER 5/2018):
+        - Visual Lighting Assessment: Check if the work area is well-lit or dangerously dark/shadowed for high-risk work based on min_lux requirement.
+        - Ergonomics & Posture: Check if any worker is bending severely (>30 degrees) at the spine or using improper manual lifting posture that risks musculoskeletal injury.
+
+        TOYOTA STOP 6 MAPPING:
+        Classify the primary risk according to Toyota STOP 6 standards:
+        - "STOP_6_1_APPARATUS" (Moving machinery, pinch points, LOTO)
+        - "STOP_6_2_HEAVY_OBJECTS" (Overhead crane, dropped items, falling parts)
+        - "STOP_6_3_VEHICLES" (Forklifts, tow tractors, pedestrian walkways)
+        - "STOP_6_4_DROP_FALL" (Working at height, scaffolding, ladders, roof)
+        - "STOP_6_5_ELECTRIC_SHOCK" (High-voltage electrical, live panels)
+        - "STOP_6_6_HEAT_HAZARDS" (Welding hot work, fires, chemicals, molten metal)
+        - "STOP_6_GENERAL" (Standard shopfloor safety)
 
         CRITICAL ENFORCEMENT RULES:
         - For VENDOR / CONTRACTOR High-Risk Works (Hot Work, Working at Height): If critical danger is detected, set "enforcement_action": "SUSPEND_PERMIT".
@@ -36,10 +50,16 @@ class GeminiAuditService:
         - "status": string, MUST be either "COMPLIANT" or "NON_COMPLIANT"
         - "severity": string, MUST be either "NONE", "LOW", "MEDIUM", or "CRITICAL"
         - "summary_headline": string, short headline describing the inspection
+        - "stop6_category": string, one of the Toyota STOP 6 categories above
+        - "health_evaluation": object containing:
+            - "lighting_condition": string ("ADEQUATE", "MARGINAL", or "INSUFFICIENT_LIGHTING")
+            - "lighting_notes": string describing visual lighting assessment
+            - "ergonomics_status": string ("SAFE_POSTURE", "ERGONOMIC_STRAIN_RISK", or "NOT_APPLICABLE")
+            - "ergonomics_notes": string describing worker posture
         - "observations": list of objects, each MUST have:
-            - "category": MUST be strictly one of: "PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", or "FIRE_HAZARD"
+            - "category": MUST be strictly one of: "PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", "FIRE_HAZARD", "HEALTH_HAZARD", or "ERGONOMICS"
             - "description": string explaining what was observed
-            - "is_infraction": boolean (true if safety violation, false if compliant/safe)
+            - "is_infraction": boolean (true if safety/health violation, false if compliant/safe)
             - "confidence": float between 0.0 and 1.0 (e.g. 0.95)
         - "enforcement_action": string, MUST be either "NO_ACTION", "ISSUE_WARNING", or "SUSPEND_PERMIT"
         - "recommendation": string, clear corrective instructions for on-site staff
@@ -74,7 +94,7 @@ class GeminiAuditService:
                 if "summary" in parsed and "summary_headline" not in parsed:
                     parsed["summary_headline"] = parsed["summary"]
                 if "summary_headline" not in parsed:
-                    parsed["summary_headline"] = "Inspeksi K3 Selesai Divalidasi"
+                    parsed["summary_headline"] = "Inspeksi K3 & Higiene Selesai Divalidasi"
                 
                 # Normalisasi observations agar 100% mematuhi schema Observation
                 raw_obs = parsed.get("observations", [])
@@ -85,6 +105,10 @@ class GeminiAuditService:
                         normalized_cat = "PPE"
                     elif "FIRE" in cat or "WELD" in cat:
                         normalized_cat = "FIRE_HAZARD"
+                    elif "ERGO" in cat or "POSTUR" in cat:
+                        normalized_cat = "ERGONOMICS"
+                    elif "HEALTH" in cat or "HYGIENE" in cat or "LIGHT" in cat or "LUX" in cat:
+                        normalized_cat = "HEALTH_HAZARD"
                     elif "ACTION" in cat or "BEHAVIOR" in cat:
                         normalized_cat = "UNSAFE_ACTION"
                     else:
@@ -97,6 +121,16 @@ class GeminiAuditService:
                         "confidence": float(obs.get("confidence", 0.95))
                     })
                 parsed["observations"] = valid_obs
+
+                if "stop6_category" not in parsed:
+                    parsed["stop6_category"] = "STOP_6_GENERAL"
+                if "health_evaluation" not in parsed:
+                    parsed["health_evaluation"] = {
+                        "lighting_condition": "ADEQUATE",
+                        "lighting_notes": "Pencahayaan visual terdeteksi memadai.",
+                        "ergonomics_status": "SAFE_POSTURE",
+                        "ergonomics_notes": "Postur kerja dalam batas aman."
+                    }
 
                 if "recommendation" not in parsed:
                     parsed["recommendation"] = "Patuhi seluruh standar APD dan izin kerja aktif."

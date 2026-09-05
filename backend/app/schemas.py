@@ -2,7 +2,7 @@ from typing import List, Optional, Literal, Any
 from pydantic import BaseModel, Field
 
 class Observation(BaseModel):
-    category: Literal["PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", "FIRE_HAZARD"]
+    category: Literal["PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", "FIRE_HAZARD", "HEALTH_HAZARD", "ERGONOMICS"]
     description: str
     is_infraction: bool
     confidence: float = Field(..., ge=0.0, le=1.0)
@@ -14,6 +14,8 @@ class AuditResult(BaseModel):
     observations: List[Observation]
     enforcement_action: Literal["NO_ACTION", "ISSUE_WARNING", "SUSPEND_PERMIT"]
     recommendation: str
+    stop6_category: Optional[str] = "GENERAL_SAFETY"
+    health_evaluation: Optional[dict] = None
 
 class PermitResponse(BaseModel):
     id: Any

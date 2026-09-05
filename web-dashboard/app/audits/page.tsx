@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera } from "lucide-react";
+import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera, HeartPulse, Sun } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Observation = {
@@ -28,6 +28,13 @@ type AuditItem = {
     enforcement_action?: string;
     recommendation?: string;
     data_retention_policy?: string;
+    stop6_category?: string;
+    health_evaluation?: {
+      lighting_condition?: string;
+      lighting_notes?: string;
+      ergonomics_status?: string;
+      ergonomics_notes?: string;
+    };
   };
 };
 
@@ -206,8 +213,56 @@ export default function AuditsPage() {
                     <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
                       Action: {selectedAudit.ai_raw_json.enforcement_action}
                     </span>
+                    {selectedAudit.ai_raw_json.stop6_category && (
+                      <span className="px-2 py-1 bg-rose-100 text-rose-800 text-xs font-bold rounded-md flex items-center gap-1 border border-rose-200">
+                        <ShieldAlert size={12} /> {selectedAudit.ai_raw_json.stop6_category}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Industrial Hygiene & Health Assessment */}
+                {selectedAudit.ai_raw_json.health_evaluation && (
+                  <div className="bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl space-y-3">
+                    <h4 className="font-bold text-xs text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <HeartPulse size={14} className="text-emerald-600" />
+                      Industrial Hygiene & Health Assessment (Permenaker 5/2018)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-slate-500 font-medium flex items-center gap-1">
+                            <Sun size={12} className="text-amber-500" /> Pencahayaan (Lighting)
+                          </span>
+                          <span className="font-bold text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-800">
+                            {selectedAudit.ai_raw_json.health_evaluation.lighting_condition || "ADEQUATE"}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed text-[11px]">
+                          {selectedAudit.ai_raw_json.health_evaluation.lighting_notes}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-slate-500 font-medium flex items-center gap-1">
+                            <HeartPulse size={12} className="text-emerald-500" /> Postur Kerja (Ergonomi)
+                          </span>
+                          <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                            selectedAudit.ai_raw_json.health_evaluation.ergonomics_status === 'ERGONOMIC_STRAIN_RISK' 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {selectedAudit.ai_raw_json.health_evaluation.ergonomics_status || "SAFE_POSTURE"}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed text-[11px]">
+                          {selectedAudit.ai_raw_json.health_evaluation.ergonomics_notes}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Observations */}
                 <div>
