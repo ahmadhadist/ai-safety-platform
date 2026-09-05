@@ -175,13 +175,15 @@ def chat_with_copilot(request: ChatRequest, db: Session = Depends(get_db), curre
     }
     
     # Panggil Gemini dengan context RAG
-    reply = gemini_service.chat_with_ehs_data(request.message, context)
+    reply = gemini_service.chat_with_ehs_data(request.message, context, request.language)
     return {"reply": reply}
 
 @router.post("/inspections/audit")
 async def process_inspection_audit(
     permit_id: str = Form(...),
     image: UploadFile = File(...),
+    sensor_temperature_c: float = Form(None),
+    sensor_humidity_pct: float = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -190,6 +192,12 @@ async def process_inspection_audit(
         raise HTTPException(status_code=404, detail="Work permit not found")
         
     rules_context = permit.template.dynamic_rules
+    if sensor_temperature_c is not None or sensor_humidity_pct is not None:
+        rules_context["sensor_data_fusion"] = {
+            "temperature_c": sensor_temperature_c,
+            "humidity_pct": sensor_humidity_pct
+        }
+        
     image_bytes = await image.read()
     mime_type = image.content_type or "image/jpeg"
     

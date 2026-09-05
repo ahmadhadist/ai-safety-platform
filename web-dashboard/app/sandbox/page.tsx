@@ -9,6 +9,12 @@ export default function SandboxPage() {
   const [permitId, setPermitId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  
+  // IoT Sensor Simulator
+  const [enableIoT, setEnableIoT] = useState(false);
+  const [sensorTemp, setSensorTemp] = useState(36);
+  const [sensorHumid, setSensorHumid] = useState(80);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,6 +43,11 @@ export default function SandboxPage() {
     const formData = new FormData();
     formData.append("image", file);
     formData.append("permit_id", permitId);
+    
+    if (enableIoT) {
+      formData.append("sensor_temperature_c", sensorTemp.toString());
+      formData.append("sensor_humidity_pct", sensorHumid.toString());
+    }
 
     try {
       const res = await api.post("/inspections/audit", formData, {
@@ -99,6 +110,53 @@ export default function SandboxPage() {
                         {ppe}
                       </span>
                     )) || <span className="text-slate-400">Standar Umum</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* IoT Sensor Simulator */}
+            <div className={`p-4 border rounded-xl space-y-3 transition-colors ${enableIoT ? 'bg-amber-50/50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                    <Sun size={16} className={enableIoT ? 'text-amber-500' : 'text-slate-400'} />
+                    IoT Environmental Sensor (Simulator)
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Simulasikan data cuaca / suhu sekitar area kerja untuk di-fusi (Sensor Fusion) dengan Vision AI.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={enableIoT}
+                    onChange={e => setEnableIoT(e.target.checked)}
+                    className="sr-only peer" 
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
+              
+              {enableIoT && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Suhu (°C)</label>
+                    <input 
+                      type="number" 
+                      value={sensorTemp}
+                      onChange={e => setSensorTemp(Number(e.target.value))}
+                      className="w-full border border-amber-200 rounded p-2 text-sm focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Kelembaban (%)</label>
+                    <input 
+                      type="number" 
+                      value={sensorHumid}
+                      onChange={e => setSensorHumid(Number(e.target.value))}
+                      className="w-full border border-amber-200 rounded p-2 text-sm focus:border-amber-500 outline-none"
+                    />
                   </div>
                 </div>
               )}

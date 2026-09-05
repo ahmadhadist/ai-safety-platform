@@ -63,6 +63,7 @@ class DashboardMetrics(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    language: Optional[str] = "id"
 
 class ChatResponse(BaseModel):
     reply: str

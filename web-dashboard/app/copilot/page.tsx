@@ -79,6 +79,7 @@ export default function CopilotPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [language, setLanguage] = useState("id");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
@@ -107,7 +108,10 @@ export default function CopilotPage() {
     setIsLoading(true);
 
     try {
-      const res = await api.post("/copilot/chat", { message: textToSend.trim() });
+      const res = await api.post("/copilot/chat", { 
+        message: textToSend.trim(),
+        language: language 
+      });
       setMessages(prev => [...prev, { role: "ai", content: res.data.reply }]);
     } catch (error) {
       console.error(error);
@@ -229,6 +233,16 @@ export default function CopilotPage() {
         {/* Input Bar */}
         <div className="p-4 bg-white">
           <div className="flex gap-2.5">
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="bg-slate-50 border border-slate-200 outline-none rounded-xl px-3 py-3 text-slate-700 text-sm focus:border-blue-500 font-medium cursor-pointer"
+              disabled={isLoading}
+            >
+              <option value="id">🇮🇩 ID</option>
+              <option value="en">🇬🇧 EN</option>
+              <option value="ja">🇯🇵 JA</option>
+            </select>
             <input 
               type="text" 
               value={input}

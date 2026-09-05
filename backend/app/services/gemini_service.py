@@ -30,6 +30,7 @@ class GeminiAuditService:
         Identify any missing required PPE, environmental hazards, forbidden hazards, and industrial hygiene factors.
 
         OCCUPATIONAL HEALTH & INDUSTRIAL HYGIENE (PERMENAKER 5/2018):
+        - AI Sensor Fusion (IoT): If 'sensor_data_fusion' exists in the rules JSON, compare its 'temperature_c' and 'humidity_pct' against the permit's 'max_temperature_c' and 'max_humidity_pct' rules. If the actual IoT sensor temperature exceeds the maximum allowed, you MUST add a "HEALTH_HAZARD" observation for Heat Stress and set enforcement to "ISSUE_WARNING" or "SUSPEND_PERMIT".
         - Visual Lighting Assessment: Check if the work area is well-lit or dangerously dark/shadowed for high-risk work based on min_lux requirement.
         - Ergonomics & Posture: Check if any worker is bending severely (>30 degrees) at the spine or using improper manual lifting posture that risks musculoskeletal injury.
 
@@ -175,14 +176,20 @@ class GeminiAuditService:
             recommendation="Segera hentikan pekerjaan di area ini sampai seluruh personel melengkapi APD wajib."
         )
 
-    def chat_with_ehs_data(self, user_message: str, ehs_context: dict) -> str:
-        system_instruction = """You are an expert EHS (Environment, Health, and Safety) Senior Manager and AI Co-Pilot.
+    def chat_with_ehs_data(self, user_message: str, ehs_context: dict, language: str = "id") -> str:
+        lang_instruction = "professional Indonesian"
+        if language == "en":
+            lang_instruction = "professional English"
+        elif language == "ja":
+            lang_instruction = "professional Japanese (日本語)"
+            
+        system_instruction = f"""You are an expert EHS (Environment, Health, and Safety) Senior Manager and AI Co-Pilot.
 You operate with a DUAL-BRAIN intelligence architecture:
 1. GROUND TRUTH (Priority 1): Use the provided 'Live Database Context' (Work Permits, Audits, Suspensions, and Uploaded Company SOPs/Standards) for any questions regarding factory status, active contractors, and uploaded rules.
 2. GLOBAL SAFETY INTELLIGENCE (Priority 2): If the user asks about emergency response (such as chemical spills, ammonia, fire, toxic gas), first aid (P3K), OSHA standards, ISO 45001, or technical safety guidelines that are NOT explicitly documented in the local database, DO NOT refuse to answer!
 Instead, provide comprehensive, life-saving, authoritative step-by-step guidance based on global K3/OSHA/MSDS best practices.
-Politely remind them: '(Catatan: Ini adalah panduan tanggap darurat standar internasional/OSHA. Anda dapat mengunggah SOP internal spesifik pabrik melalui menu Safety Policies agar AI memadukannya dengan aturan lokal)'.
-Be analytical, concise, highly structured with Markdown (bullet points, bold text), and speak in professional Indonesian by default."""
+Politely remind them to upload their own internal SOP via Safety Policies if needed.
+Be analytical, concise, highly structured with Markdown (bullet points, bold text), and speak in {lang_instruction} by default."""
 
         candidate_models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
         
