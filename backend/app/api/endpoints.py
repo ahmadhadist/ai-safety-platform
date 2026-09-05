@@ -32,6 +32,22 @@ def create_template(data: TemplateCreate, db: Session = Depends(get_db), current
     db.refresh(new_template)
     return {"id": str(new_template.id), "title": new_template.title, "permit_type": new_template.permit_type.value, "dynamic_rules": new_template.dynamic_rules}
 
+@router.put("/policies/templates/{template_id}", response_model=TemplateResponse)
+def update_template(template_id: str, data: TemplateCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    template = db.query(PermitTemplate).filter(PermitTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+        
+    template.permit_type = data.permit_type
+    template.title = data.title
+    template.dynamic_rules = data.dynamic_rules
+    
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return {"id": str(template.id), "title": template.title, "permit_type": template.permit_type.value, "dynamic_rules": template.dynamic_rules}
+
+
 
 @router.post("/policies/upload-sop", response_model=TemplateResponse)
 def upload_sop_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):

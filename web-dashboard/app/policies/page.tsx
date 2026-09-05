@@ -36,12 +36,14 @@ export default function PoliciesPage() {
   };
 
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newType, setNewType] = useState("HOT_WORK");
   const [ppe, setPpe] = useState(["Helmet", "Safety_Shoes"]);
   const [newPpe, setNewPpe] = useState("");
 
   // Industrial Hygiene & Toyota STOP 6 States
+  const [enableHealth, setEnableHealth] = useState(false);
   const [minLux, setMinLux] = useState(300);
   const [maxTemp, setMaxTemp] = useState(34);
   const [maxHumidity, setMaxHumidity] = useState(75);
@@ -74,37 +76,72 @@ export default function PoliciesPage() {
     setPpe(ppe.filter(p => p !== item));
   };
 
+  const handleEditTemplate = (template: any) => {
+    setIsEditing(true);
+    setIsCreating(true);
+    setSelectedTemplate(template);
+    
+    setNewTitle(template.title);
+    setNewType(template.permit_type);
+    setPpe(template.dynamic_rules?.required_ppe || []);
+    setStop6Category(template.dynamic_rules?.toyota_stop6_category || "STOP_6_6_HEAT_HAZARDS");
+    
+    if (template.dynamic_rules?.industrial_hygiene) {
+      setEnableHealth(true);
+      setMinLux(template.dynamic_rules.industrial_hygiene.min_lux || 300);
+      setMaxTemp(template.dynamic_rules.industrial_hygiene.max_temperature_c || 34);
+      setMaxHumidity(template.dynamic_rules.industrial_hygiene.max_humidity_pct || 75);
+      setCheckErgonomics(template.dynamic_rules.industrial_hygiene.check_ergonomic_posture ?? true);
+    } else {
+      setEnableHealth(false);
+    }
+  };
+
   const saveNewTemplate = async () => {
     if (!newTitle) return alert("Title is required");
     
-    const dynamic_rules = {
+    const dynamic_rules: any = {
       required_ppe: ppe,
       severity_mapping: {
         CRITICAL: "SUSPEND_PERMIT",
         MEDIUM: "ISSUE_WARNING"
       },
-      industrial_hygiene: {
+      toyota_stop6_category: stop6Category
+    };
+
+    if (enableHealth) {
+      dynamic_rules.industrial_hygiene = {
         min_lux: Number(minLux),
         max_temperature_c: Number(maxTemp),
         max_humidity_pct: Number(maxHumidity),
         check_ergonomic_posture: checkErgonomics
-      },
-      toyota_stop6_category: stop6Category
-    };
+      };
+    }
 
     try {
-      await api.post("/policies/templates", {
-        title: newTitle,
-        permit_type: newType,
-        dynamic_rules: dynamic_rules
-      });
+      if (isEditing && selectedTemplate) {
+        await api.put(`/policies/templates/${selectedTemplate.id}`, {
+          title: newTitle,
+          permit_type: newType,
+          dynamic_rules: dynamic_rules
+        });
+      } else {
+        await api.post("/policies/templates", {
+          title: newTitle,
+          permit_type: newType,
+          dynamic_rules: dynamic_rules
+        });
+      }
       setIsCreating(false);
+      setIsEditing(false);
       setNewTitle("");
       setPpe(["Helmet", "Safety_Shoes"]);
       setMinLux(300);
       setMaxTemp(34);
       setMaxHumidity(75);
       setCheckErgonomics(true);
+      setEnableHealth(false);
+      setSelectedTemplate(null);
       fetchTemplates(); // Refresh list
     } catch (error) {
       console.error(error);
@@ -274,18 +311,30 @@ export default function PoliciesPage() {
                 </div>
 
                 {/* Industrial Hygiene & Health Configurator */}
-                <div className="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl space-y-4">
+                <div className={`border p-4 rounded-xl space-y-4 transition-colors ${enableHealth ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
-                        <HeartPulse size={16} className="text-emerald-600" />
+                      <h4 className={`text-sm font-bold flex items-center gap-2 ${enableHealth ? 'text-emerald-950' : 'text-slate-700'}`}>
+                        <HeartPulse size={16} className={enableHealth ? 'text-emerald-600' : 'text-slate-400'} />
                         Industrial Hygiene & Health Configurator (Permenaker 5/2018)
                       </h4>
-                      <p className="text-xs text-emerald-700 mt-0.5">
+                      <p className={`text-xs mt-0.5 ${enableHealth ? 'text-emerald-700' : 'text-slate-500'}`}>
                         Parameter kesehatan lingkungan kerja yang diaudit otomatis oleh AI Vision & Sensor.
                       </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={enableHealth}
+                        onChange={e => setEnableHealth(e.target.checked)}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
                   </div>
+                  
+                  {enableHealth && (
+                    <>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Minimum Lux */}
@@ -349,6 +398,7 @@ export default function PoliciesPage() {
                       <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                     </label>
                   </div>
+                  </>)}
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
@@ -370,12 +420,21 @@ export default function PoliciesPage() {
             </div>
           ) : selectedTemplate ? (
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h3 className="text-2xl font-bold text-slate-900 mb-1">{selectedTemplate.title}</h3>
+              <div className="flex justify-between items-start mb-1">
+                <h3 className="text-2xl font-bold text-slate-900">{selectedTemplate.title}</h3>
+                <button 
+                  onClick={() => handleEditTemplate(selectedTemplate)}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-600 font-medium text-sm rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+                >
+                  Edit Policy
+                </button>
+              </div>
               <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg mb-6">
                 Type: {selectedTemplate.permit_type}
               </span>
               
               <div className="space-y-6">
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-3">Target Object Detection (PPE)</label>
                   <div className="flex flex-wrap gap-2">
