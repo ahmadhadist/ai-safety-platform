@@ -101,6 +101,7 @@ export default function AuditsPage() {
               <th className="p-4">Permit Code</th>
               <th className="p-4">Contractor</th>
               <th className="p-4">Status</th>
+              <th className="p-4">Toyota STOP 6</th>
               <th className="p-4">Severity</th>
               <th className="p-4 text-center">Auto Action</th>
               <th className="p-4 text-right">Details</th>
@@ -108,9 +109,9 @@ export default function AuditsPage() {
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
             {loading ? (
-              <tr><td colSpan={7} className="p-4 text-center text-slate-500">Loading history...</td></tr>
+              <tr><td colSpan={8} className="p-4 text-center text-slate-500">Loading history...</td></tr>
             ) : audits.length === 0 ? (
-              <tr><td colSpan={7} className="p-4 text-center text-slate-500">No inspection history found.</td></tr>
+              <tr><td colSpan={8} className="p-4 text-center text-slate-500">No inspection history found.</td></tr>
             ) : (
               audits.map(audit => (
                 <tr key={audit.id} className="hover:bg-slate-50 transition-colors">
@@ -118,6 +119,15 @@ export default function AuditsPage() {
                   <td className="p-4 text-slate-900 font-bold">{audit.permit_code}</td>
                   <td className="p-4 text-slate-600">{audit.contractor_company}</td>
                   <td className="p-4">{getStatusBadge(audit.compliance_status)}</td>
+                  <td className="p-4">
+                    {audit.ai_raw_json?.stop6_category ? (
+                      <span className="px-2 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold rounded border border-rose-200 block truncate max-w-[120px]" title={audit.ai_raw_json.stop6_category}>
+                        {audit.ai_raw_json.stop6_category.replace('STOP_6_', '').replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
+                  </td>
                   <td className="p-4">{getSeverityBadge(audit.severity_level)}</td>
                   <td className="p-4 text-center">
                     {audit.auto_action_taken ? (
