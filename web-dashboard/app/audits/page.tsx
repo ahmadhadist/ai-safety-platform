@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera, HeartPulse, Sun } from "lucide-react";
+import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera, HeartPulse, Sun, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Observation = {
