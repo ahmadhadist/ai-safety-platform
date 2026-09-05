@@ -313,7 +313,7 @@ export default function PoliciesPage() {
                 <div className="bg-rose-50/60 border border-rose-200 p-4 rounded-xl space-y-2">
                   <label className="block text-sm font-bold text-rose-950 flex items-center gap-2">
                     <ShieldAlert size={16} className="text-rose-600" />
-                    Toyota STOP 6 Standards Mapping
+                    Toyota STOP 6 (トヨタ ストップ6) Mapping
                   </label>
                   <p className="text-xs text-rose-700">
                     Petakan izin kerja ini ke dalam 6 kategori kecelakaan fatal standar Toyota (TPS Safety).
@@ -430,7 +430,7 @@ export default function PoliciesPage() {
                     <div>
                       <h4 className={`text-sm font-bold flex items-center gap-2 ${enableSafetyPerimeter ? 'text-indigo-950' : 'text-slate-700'}`}>
                         <ShieldCheck size={16} className={enableSafetyPerimeter ? 'text-indigo-600' : 'text-slate-400'} />
-                        Safety Perimeter & Toyota 5S (Housekeeping)
+                        Safety Perimeter & Toyota 5S (トヨタ 5S)
                       </h4>
                       <p className={`text-xs mt-0.5 ${enableSafetyPerimeter ? 'text-indigo-700' : 'text-slate-500'}`}>
                         Deteksi area kerja bersih dari tripping hazard, dan keberadaan proteksi aktif.
@@ -451,7 +451,7 @@ export default function PoliciesPage() {
                     <div className="space-y-3 pt-2 border-t border-indigo-200/60">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-semibold text-slate-800">5S Housekeeping (Seiri/Seiton/Seiso)</p>
+                          <p className="text-xs font-semibold text-slate-800">5S Housekeeping (整理 Seiri / 整頓 Seiton / 清掃 Seiso)</p>
                           <p className="text-[11px] text-slate-500">Deteksi kabel berserakan, tumpahan, dan bahaya tersandung.</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">

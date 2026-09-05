@@ -272,7 +272,7 @@ export default function SandboxPage() {
                   <div className="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-lg space-y-2 text-xs mt-3">
                     <div className="flex items-center justify-between text-indigo-400 font-bold border-b border-indigo-900/50 pb-1.5">
                       <span className="flex items-center gap-1.5">
-                        <ShieldCheck size={14} /> Safety Perimeter & Toyota 5S
+                        <ShieldCheck size={14} /> Safety Perimeter & Toyota 5S (トヨタ 5S)
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[11px]">

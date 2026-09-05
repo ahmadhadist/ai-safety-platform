@@ -107,7 +107,7 @@ export default function AuditsPage() {
               <th className="p-4">Permit Code</th>
               <th className="p-4">Contractor</th>
               <th className="p-4">Status</th>
-              <th className="p-4">Toyota STOP 6</th>
+              <th className="p-4">Toyota STOP 6 (トヨタ ストップ6)</th>
               <th className="p-4">Severity</th>
               <th className="p-4 text-center">Auto Action</th>
               <th className="p-4 text-right">Details</th>
@@ -285,7 +285,7 @@ export default function AuditsPage() {
                   <div className="bg-indigo-50/80 border border-indigo-200 p-4 rounded-xl space-y-3">
                     <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-indigo-600" />
-                      Safety Perimeter & Toyota 5S
+                      Safety Perimeter & Toyota 5S (トヨタ 5S)
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">

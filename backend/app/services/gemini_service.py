@@ -16,7 +16,9 @@ class GeminiAuditService:
         system_instruction = (
             "You are an expert Environmental Health and Safety (EHS) Inspector for a global manufacturing company. "
             "Your job is to strictly enforce safety compliance based on the specific permit rules provided. "
-            "Evaluate the provided image against the 'dynamic_rules' and output structured JSON."
+            "Evaluate the provided image against the 'dynamic_rules' and output structured JSON. "
+            "IMPORTANT: All notes, descriptions, recommendations, and headlines MUST be written bilingually in Indonesian and English (e.g. 'Pekerja aman. / Worker is safe.'). "
+            "Additionally, whenever mentioning 5S or STOP 6 terminology, always include its authentic Japanese Kanji and reading (e.g., 整理 Seiri, 整頓 Seiton, 清掃 Seiso, トヨタ ストップ6)."
         )
 
         prompt = f"""
@@ -103,7 +105,7 @@ class GeminiAuditService:
                 if "summary" in parsed and "summary_headline" not in parsed:
                     parsed["summary_headline"] = parsed["summary"]
                 if "summary_headline" not in parsed:
-                    parsed["summary_headline"] = "Inspeksi K3 & Higiene Selesai Divalidasi"
+                    parsed["summary_headline"] = "Inspeksi K3 & Higiene Selesai Divalidasi / HSE Inspection & Hygiene Validated"
                 
                 # Normalisasi observations agar 100% mematuhi schema Observation
                 raw_obs = parsed.get("observations", [])
@@ -125,7 +127,7 @@ class GeminiAuditService:
 
                     valid_obs.append({
                         "category": normalized_cat,
-                        "description": obs.get("description", obs.get("evidence", "Catatan inspeksi keselamatan")),
+                        "description": obs.get("description", obs.get("evidence", "Catatan inspeksi keselamatan / Safety inspection note")),
                         "is_infraction": bool(obs.get("is_infraction", parsed.get("status") == "NON_COMPLIANT")),
                         "confidence": float(obs.get("confidence", 0.95))
                     })
@@ -136,20 +138,20 @@ class GeminiAuditService:
                 if "health_evaluation" not in parsed:
                     parsed["health_evaluation"] = {
                         "lighting_condition": "ADEQUATE",
-                        "lighting_notes": "Pencahayaan visual terdeteksi memadai.",
+                        "lighting_notes": "Pencahayaan visual terdeteksi memadai. / Visual lighting detected as adequate.",
                         "ergonomics_status": "SAFE_POSTURE",
-                        "ergonomics_notes": "Postur kerja dalam batas aman."
+                        "ergonomics_notes": "Postur kerja dalam batas aman. / Working posture is within safe limits."
                     }
                 if "safety_perimeter_evaluation" not in parsed:
                     parsed["safety_perimeter_evaluation"] = {
                         "housekeeping_5s_status": "CLEAN_AND_SAFE",
-                        "housekeeping_notes": "Area kerja terpantau bersih dan bebas dari bahaya tersandung.",
+                        "housekeeping_notes": "Area kerja terpantau bersih (整理 Seiri / 整頓 Seiton / 清掃 Seiso). / Work area is clean and free of tripping hazards.",
                         "barrier_and_apar_status": "SECURE_PERIMETER",
-                        "perimeter_notes": "Perimeter aman."
+                        "perimeter_notes": "Perimeter aman (トヨタ ストップ6). / Perimeter is secure."
                     }
 
                 if "recommendation" not in parsed:
-                    parsed["recommendation"] = "Patuhi seluruh standar APD dan izin kerja aktif."
+                    parsed["recommendation"] = "Patuhi seluruh standar APD dan izin kerja aktif. / Comply with all PPE standards and active permit rules."
                 if "enforcement_action" not in parsed:
                     parsed["enforcement_action"] = "SUSPEND_PERMIT" if parsed.get("status") == "NON_COMPLIANT" else "NO_ACTION"
                 
