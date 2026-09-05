@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory, HeartPulse, Sun, ShieldAlert } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory, HeartPulse, Sun, ShieldAlert, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function SandboxPage() {
@@ -263,6 +263,44 @@ export default function SandboxPage() {
                           {result.health_evaluation.ergonomics_status || "SAFE_POSTURE"}
                         </span>
                         <p className="text-slate-400 mt-0.5">{result.health_evaluation.ergonomics_notes}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Safety Perimeter & 5S Assessment */}
+                {result.safety_perimeter_evaluation && (
+                  <div className="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-lg space-y-2 text-xs mt-3">
+                    <div className="flex items-center justify-between text-indigo-400 font-bold border-b border-indigo-900/50 pb-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <ShieldCheck size={14} /> Safety Perimeter & Toyota 5S
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-slate-900/80 p-2 rounded border border-indigo-900/40">
+                        <span className="text-slate-400 flex items-center gap-1 mb-0.5">
+                          5S Housekeeping:
+                        </span>
+                        <span className={`font-bold block ${
+                          result.safety_perimeter_evaluation.housekeeping_5s_status === 'CLEAN_AND_SAFE'
+                            ? 'text-emerald-300' 
+                            : 'text-rose-300'
+                        }`}>
+                          {result.safety_perimeter_evaluation.housekeeping_5s_status || "CLEAN_AND_SAFE"}
+                        </span>
+                        <p className="text-slate-400 mt-0.5">{result.safety_perimeter_evaluation.housekeeping_notes}</p>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded border border-indigo-900/40">
+                        <span className="text-slate-400 flex items-center gap-1 mb-0.5">
+                          Perimeter / APAR:
+                        </span>
+                        <span className={`font-bold block ${
+                          result.safety_perimeter_evaluation.barrier_and_apar_status === 'SECURE_PERIMETER' 
+                            ? 'text-emerald-300' 
+                            : 'text-rose-300'
+                        }`}>
+                          {result.safety_perimeter_evaluation.barrier_and_apar_status || "SECURE_PERIMETER"}
+                        </span>
+                        <p className="text-slate-400 mt-0.5">{result.safety_perimeter_evaluation.perimeter_notes}</p>
                       </div>
                     </div>
                   </div>

@@ -50,6 +50,11 @@ export default function PoliciesPage() {
   const [checkErgonomics, setCheckErgonomics] = useState(true);
   const [stop6Category, setStop6Category] = useState("STOP_6_6_HEAT_HAZARDS");
 
+  // Safety Perimeter & 5S
+  const [enableSafetyPerimeter, setEnableSafetyPerimeter] = useState(false);
+  const [check5SHousekeeping, setCheck5SHousekeeping] = useState(true);
+  const [checkBarrierApar, setCheckBarrierApar] = useState(true);
+
   useEffect(() => {
     fetchTemplates();
   }, []);
@@ -95,6 +100,14 @@ export default function PoliciesPage() {
     } else {
       setEnableHealth(false);
     }
+
+    if (template.dynamic_rules?.safety_perimeter) {
+      setEnableSafetyPerimeter(true);
+      setCheck5SHousekeeping(template.dynamic_rules.safety_perimeter.check_5s_housekeeping ?? true);
+      setCheckBarrierApar(template.dynamic_rules.safety_perimeter.check_barrier_apar ?? true);
+    } else {
+      setEnableSafetyPerimeter(false);
+    }
   };
 
   const saveNewTemplate = async () => {
@@ -115,6 +128,13 @@ export default function PoliciesPage() {
         max_temperature_c: Number(maxTemp),
         max_humidity_pct: Number(maxHumidity),
         check_ergonomic_posture: checkErgonomics
+      };
+    }
+
+    if (enableSafetyPerimeter) {
+      dynamic_rules.safety_perimeter = {
+        check_5s_housekeeping: check5SHousekeeping,
+        check_barrier_apar: checkBarrierApar
       };
     }
 
@@ -141,6 +161,9 @@ export default function PoliciesPage() {
       setMaxHumidity(75);
       setCheckErgonomics(true);
       setEnableHealth(false);
+      setEnableSafetyPerimeter(false);
+      setCheck5SHousekeeping(true);
+      setCheckBarrierApar(true);
       setSelectedTemplate(null);
       fetchTemplates(); // Refresh list
     } catch (error) {
@@ -399,6 +422,65 @@ export default function PoliciesPage() {
                     </label>
                   </div>
                   </>)}
+                </div>
+
+                {/* Safety Perimeter & 5S Configurator */}
+                <div className={`border p-4 rounded-xl space-y-4 transition-colors ${enableSafetyPerimeter ? 'bg-indigo-50/60 border-indigo-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className={`text-sm font-bold flex items-center gap-2 ${enableSafetyPerimeter ? 'text-indigo-950' : 'text-slate-700'}`}>
+                        <ShieldCheck size={16} className={enableSafetyPerimeter ? 'text-indigo-600' : 'text-slate-400'} />
+                        Safety Perimeter & Toyota 5S (Housekeeping)
+                      </h4>
+                      <p className={`text-xs mt-0.5 ${enableSafetyPerimeter ? 'text-indigo-700' : 'text-slate-500'}`}>
+                        Deteksi area kerja bersih dari tripping hazard, dan keberadaan proteksi aktif.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={enableSafetyPerimeter}
+                        onChange={e => setEnableSafetyPerimeter(e.target.checked)}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+                  
+                  {enableSafetyPerimeter && (
+                    <div className="space-y-3 pt-2 border-t border-indigo-200/60">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">5S Housekeeping (Seiri/Seiton/Seiso)</p>
+                          <p className="text-[11px] text-slate-500">Deteksi kabel berserakan, tumpahan, dan bahaya tersandung.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={check5SHousekeeping}
+                            onChange={e => setCheck5SHousekeeping(e.target.checked)}
+                            className="sr-only peer" 
+                          />
+                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">Safety Barricade & APAR</p>
+                          <p className="text-[11px] text-slate-500">Deteksi safety cone, barikade, dan ketersediaan APAR di area khusus.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={checkBarrierApar}
+                            onChange={e => setCheckBarrierApar(e.target.checked)}
+                            className="sr-only peer" 
+                          />
+                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">

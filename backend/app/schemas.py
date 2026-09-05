@@ -16,6 +16,7 @@ class AuditResult(BaseModel):
     recommendation: str
     stop6_category: Optional[str] = "GENERAL_SAFETY"
     health_evaluation: Optional[dict] = None
+    safety_perimeter_evaluation: Optional[dict] = None
 
 class PermitResponse(BaseModel):
     id: Any

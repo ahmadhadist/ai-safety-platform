@@ -35,6 +35,12 @@ type AuditItem = {
       ergonomics_status?: string;
       ergonomics_notes?: string;
     };
+    safety_perimeter_evaluation?: {
+      housekeeping_5s_status?: string;
+      housekeeping_notes?: string;
+      barrier_and_apar_status?: string;
+      perimeter_notes?: string;
+    };
   };
 };
 
@@ -268,6 +274,53 @@ export default function AuditsPage() {
                         </div>
                         <p className="text-slate-700 leading-relaxed text-[11px]">
                           {selectedAudit.ai_raw_json.health_evaluation.ergonomics_notes}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Safety Perimeter & Toyota 5S Assessment */}
+                {selectedAudit.ai_raw_json.safety_perimeter_evaluation && (
+                  <div className="bg-indigo-50/80 border border-indigo-200 p-4 rounded-xl space-y-3">
+                    <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-indigo-600" />
+                      Safety Perimeter & Toyota 5S
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-slate-500 font-medium flex items-center gap-1">
+                            5S Housekeeping
+                          </span>
+                          <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                            selectedAudit.ai_raw_json.safety_perimeter_evaluation.housekeeping_5s_status === 'CLEAN_AND_SAFE'
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {selectedAudit.ai_raw_json.safety_perimeter_evaluation.housekeeping_5s_status || "CLEAN_AND_SAFE"}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed text-[11px]">
+                          {selectedAudit.ai_raw_json.safety_perimeter_evaluation.housekeeping_notes}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-slate-500 font-medium flex items-center gap-1">
+                            Perimeter / APAR
+                          </span>
+                          <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                            selectedAudit.ai_raw_json.safety_perimeter_evaluation.barrier_and_apar_status === 'SECURE_PERIMETER' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {selectedAudit.ai_raw_json.safety_perimeter_evaluation.barrier_and_apar_status || "SECURE_PERIMETER"}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed text-[11px]">
+                          {selectedAudit.ai_raw_json.safety_perimeter_evaluation.perimeter_notes}
                         </p>
                       </div>
                     </div>

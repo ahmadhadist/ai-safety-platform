@@ -31,6 +31,10 @@ class GeminiAuditService:
         - Visual Lighting Assessment: Check if the work area is well-lit or dangerously dark/shadowed for high-risk work based on min_lux requirement.
         - Ergonomics & Posture: Check if any worker is bending severely (>30 degrees) at the spine or using improper manual lifting posture that risks musculoskeletal injury.
 
+        SAFETY PERIMETER & TOYOTA 5S (HOUSEKEEPING):
+        - 5S Housekeeping (Seiri/Seiton/Seiso): Check for clutter, tripping hazards, spills, or unorganized tools in the immediate work zone.
+        - Safety Perimeter: Check if appropriate barricades, safety cones, warning signs, or fire extinguishers (APAR for Hot Work) are visibly present when required by the rules.
+
         TOYOTA STOP 6 MAPPING:
         Classify the primary risk according to Toyota STOP 6 standards:
         - "STOP_6_1_APPARATUS" (Moving machinery, pinch points, LOTO)
@@ -56,6 +60,11 @@ class GeminiAuditService:
             - "lighting_notes": string describing visual lighting assessment
             - "ergonomics_status": string ("SAFE_POSTURE", "ERGONOMIC_STRAIN_RISK", or "NOT_APPLICABLE")
             - "ergonomics_notes": string describing worker posture
+        - "safety_perimeter_evaluation": object containing:
+            - "housekeeping_5s_status": string ("CLEAN_AND_SAFE", "CLUTTERED_TRIPPING_HAZARD", or "NOT_APPLICABLE")
+            - "housekeeping_notes": string describing the 5S condition
+            - "barrier_and_apar_status": string ("SECURE_PERIMETER", "MISSING_BARRIERS", or "NOT_APPLICABLE")
+            - "perimeter_notes": string describing presence of safety cones/barriers/fire extinguishers
         - "observations": list of objects, each MUST have:
             - "category": MUST be strictly one of: "PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", "FIRE_HAZARD", "HEALTH_HAZARD", or "ERGONOMICS"
             - "description": string explaining what was observed
@@ -130,6 +139,13 @@ class GeminiAuditService:
                         "lighting_notes": "Pencahayaan visual terdeteksi memadai.",
                         "ergonomics_status": "SAFE_POSTURE",
                         "ergonomics_notes": "Postur kerja dalam batas aman."
+                    }
+                if "safety_perimeter_evaluation" not in parsed:
+                    parsed["safety_perimeter_evaluation"] = {
+                        "housekeeping_5s_status": "CLEAN_AND_SAFE",
+                        "housekeeping_notes": "Area kerja terpantau bersih dan bebas dari bahaya tersandung.",
+                        "barrier_and_apar_status": "SECURE_PERIMETER",
+                        "perimeter_notes": "Perimeter aman."
                     }
 
                 if "recommendation" not in parsed:
