@@ -57,10 +57,10 @@ export default function PermitsPage() {
   const handleResolve = async (permitId: string) => {
     try {
       await api.post(`/permits/${permitId}/resolve`);
-      alert("Izin kerja berhasil dipulihkan (APPROVED).");
+      alert("Work permit successfully restored (APPROVED).");
       fetchData();
     } catch (error) {
-      alert("Gagal memulihkan izin.");
+      alert("Failed to restore permit.");
     }
   };
   
@@ -77,7 +77,7 @@ export default function PermitsPage() {
       fetchData();
       setFormData(prev => ({...prev, permit_code: `HW-${Math.floor(Math.random()*10000)}`, worker_names: ""}));
     } catch (error) {
-      alert("Gagal membuat permit baru.");
+      alert("Failed to create new permit.");
     }
   };
 
@@ -89,7 +89,7 @@ export default function PermitsPage() {
             <ClipboardList className="text-emerald-500 w-8 h-8" /> 
             Permit Control Center
           </h2>
-          <p className="text-slate-500 mt-1">Monitor, tangguhkan, atau setujui izin kerja (Work Permits) yang sedang berlangsung.</p>
+          <p className="text-slate-500 mt-1">Monitor, suspend, or approve active work permits on the floor.</p>
         </div>
         <button onClick={() => setShowModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors flex items-center gap-2">
           <Plus size={20} /> Create Permit

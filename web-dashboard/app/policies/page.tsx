@@ -323,13 +323,13 @@ export default function PoliciesPage() {
                     onChange={e => setStop6Category(e.target.value)}
                     className="w-full border border-rose-300 rounded-lg p-2.5 outline-none focus:border-rose-500 text-sm bg-white font-medium text-slate-800"
                   >
-                    <option value="STOP_6_1_APPARATUS">1. Apparatus (Mesin Bergerak / Terjepit / LOTO)</option>
-                    <option value="STOP_6_2_HEAVY_OBJECTS">2. Heavy Objects (Tertimpa Benda Berat / Crane / Hoist)</option>
-                    <option value="STOP_6_3_VEHICLES">3. Vehicles (Tabrakan Forklift / AGV / Jalur Pedestrian)</option>
-                    <option value="STOP_6_4_DROP_FALL">4. Drop / Fall (Jatuh dari Ketinggian / Scaffolding)</option>
-                    <option value="STOP_6_5_ELECTRIC_SHOCK">5. Electric Shock (Sengatan Listrik Tegangan Tinggi)</option>
-                    <option value="STOP_6_6_HEAT_HAZARDS">6. Heat / Fire (Kebakaran Pengelasan / Kimia B3 / Cairan Panas)</option>
-                    <option value="STOP_6_GENERAL">General Safety (Standar Umum Shopfloor)</option>
+                    <option value="STOP_6_1_APPARATUS">1. Apparatus (Moving Machinery / Pinch Points / LOTO)</option>
+                    <option value="STOP_6_2_HEAVY_OBJECTS">2. Heavy Objects (Dropped Items / Crane / Hoist)</option>
+                    <option value="STOP_6_3_VEHICLES">3. Vehicles (Forklift Collisions / AGV / Pedestrians)</option>
+                    <option value="STOP_6_4_DROP_FALL">4. Drop / Fall (Working at Heights / Scaffolding)</option>
+                    <option value="STOP_6_5_ELECTRIC_SHOCK">5. Electric Shock (High Voltage Electricity)</option>
+                    <option value="STOP_6_6_HEAT_HAZARDS">6. Heat / Fire (Welding Fires / Hazardous Chemicals / Hot Liquids)</option>
+                    <option value="STOP_6_GENERAL">General Safety (Standard Shopfloor Safety)</option>
                   </select>
                 </div>
 
@@ -339,10 +339,10 @@ export default function PoliciesPage() {
                     <div>
                       <h4 className={`text-sm font-bold flex items-center gap-2 ${enableHealth ? 'text-emerald-950' : 'text-slate-700'}`}>
                         <HeartPulse size={16} className={enableHealth ? 'text-emerald-600' : 'text-slate-400'} />
-                        Industrial Hygiene & Health Configurator (Permenaker 5/2018)
+                        Industrial Hygiene & Health Configurator (OSHA / ISO 45001)
                       </h4>
                       <p className={`text-xs mt-0.5 ${enableHealth ? 'text-emerald-700' : 'text-slate-500'}`}>
-                        Parameter kesehatan lingkungan kerja yang diaudit otomatis oleh AI Vision & Sensor.
+                        Work environment health parameters automatically audited by AI Vision & Sensor Fusion.
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -363,28 +363,28 @@ export default function PoliciesPage() {
                     {/* Minimum Lux */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                        <Sun size={14} className="text-amber-500" /> Pencahayaan Minimum (Min Lux)
+                        <Sun size={14} className="text-amber-500" /> Minimum Lighting (Min Lux)
                       </label>
                       <select 
                         value={minLux}
                         onChange={e => setMinLux(Number(e.target.value))}
                         className="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"
                       >
-                        <option value={100}>100 Lux — Gudang & Lorong Pedestrian</option>
-                        <option value={300}>300 Lux — Workshop Mesin, Pengelasan & Maintenance</option>
-                        <option value={500}>500 Lux — Perakitan Presisi / Inspeksi Cacat Bodi</option>
+                        <option value={100}>100 Lux — Warehouses & Pedestrian Aisles</option>
+                        <option value={300}>300 Lux — Machine Shops, Welding & Maintenance</option>
+                        <option value={500}>500 Lux — Precision Assembly / Defect Inspection</option>
                       </select>
-                      <p className="text-[11px] text-slate-500 mt-1">AI mengevaluasi kecukupan terang area kerja.</p>
+                      <p className="text-[11px] text-slate-500 mt-1">AI evaluates visual brightness adequacy.</p>
                     </div>
 
                     {/* Heat & Humidity */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                        <Thermometer size={14} className="text-red-500" /> Ambang Batas Iklim Kerja Panas
+                        <Thermometer size={14} className="text-red-500" /> Hot Climate Thresholds
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-[10px] text-slate-500">Maks Suhu (°C)</span>
+                          <span className="text-[10px] text-slate-500">Max Temp (°C)</span>
                           <input 
                             type="number"
                             value={maxTemp}
@@ -393,7 +393,7 @@ export default function PoliciesPage() {
                           />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500">Maks Lembab (%)</span>
+                          <span className="text-[10px] text-slate-500">Max Humidity (%)</span>
                           <input 
                             type="number"
                             value={maxHumidity}
@@ -409,7 +409,7 @@ export default function PoliciesPage() {
                   <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-slate-800">AI Ergonomics Posture Assessment</p>
-                      <p className="text-[11px] text-slate-500">Deteksi risiko cedera tulang belakang (membungkuk ekstrim &gt;30° atau salah angkat beban).</p>
+                      <p className="text-[11px] text-slate-500">Detect spinal injury risks (extreme bending &gt;30° or improper lifting).</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
@@ -433,7 +433,7 @@ export default function PoliciesPage() {
                         Safety Perimeter & Toyota 5S (トヨタ 5S)
                       </h4>
                       <p className={`text-xs mt-0.5 ${enableSafetyPerimeter ? 'text-indigo-700' : 'text-slate-500'}`}>
-                        Deteksi area kerja bersih dari tripping hazard, dan keberadaan proteksi aktif.
+                        Detect clean workspaces free from tripping hazards, and active protection.
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -452,7 +452,7 @@ export default function PoliciesPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs font-semibold text-slate-800">5S Housekeeping (整理 Seiri / 整頓 Seiton / 清掃 Seiso)</p>
-                          <p className="text-[11px] text-slate-500">Deteksi kabel berserakan, tumpahan, dan bahaya tersandung.</p>
+                          <p className="text-[11px] text-slate-500">Detect scattered cables, spills, and tripping hazards.</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input 
@@ -466,8 +466,8 @@ export default function PoliciesPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-semibold text-slate-800">Safety Barricade & APAR</p>
-                          <p className="text-[11px] text-slate-500">Deteksi safety cone, barikade, dan ketersediaan APAR di area khusus.</p>
+                          <p className="text-xs font-semibold text-slate-800">Safety Barricade & Fire Extinguisher (APAR)</p>
+                          <p className="text-[11px] text-slate-500">Detect safety cones, barricades, and APAR availability.</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input 

@@ -248,7 +248,7 @@ export default function AuditsPage() {
                       <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-slate-500 font-medium flex items-center gap-1">
-                            <Sun size={12} className="text-amber-500" /> Pencahayaan (Lighting)
+                            <Sun size={12} className="text-amber-500" /> Visual Lighting
                           </span>
                           <span className="font-bold text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-800">
                             {selectedAudit.ai_raw_json.health_evaluation.lighting_condition || "ADEQUATE"}
@@ -262,7 +262,7 @@ export default function AuditsPage() {
                       <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-slate-500 font-medium flex items-center gap-1">
-                            <HeartPulse size={12} className="text-emerald-500" /> Postur Kerja (Ergonomi)
+                            <HeartPulse size={12} className="text-emerald-500" /> Ergonomics Posture
                           </span>
                           <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
                             selectedAudit.ai_raw_json.health_evaluation.ergonomics_status === 'ERGONOMIC_STRAIN_RISK' 

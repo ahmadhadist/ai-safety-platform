@@ -83,10 +83,10 @@ export default function CopilotPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
-    "🛠️ Standar APD Pekerjaan Ketinggian (WAH)",
-    "🚨 Cek izin kerja yang sedang ditangguhkan hari ini",
-    "🧪 Prosedur darurat tumpahan zat kimia amonia",
-    "📋 Aturan APD harian lini perakitan internal Toyota"
+    "🛠️ PPE Standards for Working at Height (WAH)",
+    "🚨 Check suspended work permits today",
+    "🧪 Emergency procedure for ammonia chemical spill",
+    "📋 Daily PPE rules for internal Toyota assembly line"
   ];
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function CopilotPage() {
             EHS Enterprise AI Co-Pilot
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Tanya jawab K3 cerdas berbasis <b>RAG Real-Time</b> (Koneksi langsung ke Work Permits, ISO 45001, & SOP Dokumen).
+            Smart EHS Q&A powered by <b>Real-Time RAG</b> (Connected directly to Work Permits, ISO 45001, & Uploaded SOPs).
           </p>
         </div>
 
@@ -209,7 +209,7 @@ export default function CopilotPage() {
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-5 py-3.5 shadow-sm flex items-center gap-2">
                 <Sparkles size={16} className="text-blue-500 animate-spin" />
-                <span className="text-xs text-slate-500 font-medium">Gemini AI sedang menalar data keselamatan...</span>
+                <span className="text-xs text-slate-500 font-medium">Gemini AI is reasoning safety data...</span>
               </div>
             </div>
           )}
@@ -248,7 +248,7 @@ export default function CopilotPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Tanyakan SOP, nomor izin kerja, atau langkah darurat..."
+              placeholder="Ask about SOPs, work permit numbers, or emergency steps..."
               className="flex-1 bg-slate-100/90 border border-slate-200/80 outline-none rounded-xl px-5 py-3 text-slate-800 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
               disabled={isLoading}
             />
@@ -262,7 +262,7 @@ export default function CopilotPage() {
           </div>
           <div className="mt-2 text-center text-[11px] text-slate-400 flex justify-center items-center gap-1.5">
             <ShieldCheck size={13} className="text-emerald-500" /> 
-            Jawaban didasarkan pada data real-time izin pabrik & standar keselamatan internasional (Zero-Hallucination).
+            Answers are based on real-time factory permit data & international safety standards (Zero-Hallucination).
           </div>
         </div>
       </div>
