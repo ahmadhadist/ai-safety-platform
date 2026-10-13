@@ -16,9 +16,9 @@ class NotificationService:
 
     @staticmethod
     def _status_line(enforcement_action: str) -> str:
-        if enforcement_action == "SUSPEND_PERMIT":
-            return "⛔ IZIN KERJA DIBEKUKAN / PERMIT SUSPENDED"
-        return "⚠️ PERINGATAN & COACHING / WARNING ISSUED"
+        if enforcement_action in ("STOP_WORK", "SUSPEND_PERMIT"):
+            return "⛔ STOP WORK ORDER"
+        return "⚠️ WARNING ISSUED"
 
     def send_whatsapp_alert(self, permit_code: str, severity: str, enforcement_action: str, violations_summary: str, photo_url: Optional[str] = None) -> bool:
         if not self.fonnte_token or not self.target_phone or "your_" in self.fonnte_token:
@@ -27,7 +27,7 @@ class NotificationService:
 
         message = (
             f"🚨 *[K3 ALERT] {severity}* 🚨\n\n"
-            f"Izin Kerja: *{permit_code}*\n"
+            f"Lokasi / Location: *{permit_code}*\n"
             f"Status: *{self._status_line(enforcement_action)}*\n\n"
             f"*Temuan AI Gemini:*\n{violations_summary}\n\n"
             f"Harap segera tindak lanjuti ke lokasi."
@@ -52,7 +52,7 @@ class NotificationService:
         # HTML parse mode + escaping: AI text with '_' or '*' would break Telegram's legacy Markdown parser.
         message = (
             f"🚨 <b>[K3 ALERT] {html.escape(severity)}</b>\n\n"
-            f"📝 <b>Permit:</b> <code>{html.escape(permit_code)}</code>\n"
+            f"📍 <b>Location:</b> {html.escape(permit_code)}\n"
             f"<b>Status:</b> {self._status_line(enforcement_action)}\n\n"
             f"<b>🔍 Temuan AI / AI Findings:</b>\n{html.escape(violations_summary)}"
         )

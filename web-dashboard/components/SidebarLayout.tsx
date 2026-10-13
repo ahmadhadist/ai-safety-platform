@@ -38,31 +38,33 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <nav className="px-4 space-y-2 mt-4">
             <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/dashboard' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <LayoutDashboard size={20} className="text-blue-400" />
-              <span>Global Overview</span>
+              <span>Overview</span>
             </Link>
             <Link href="/sandbox" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/sandbox' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <Camera size={20} className="text-purple-400" />
-              <span>AI Sandbox</span>
+              <span>AI Inspection</span>
             </Link>
-            <Link href="/permits" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/permits' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
+            {process.env.NEXT_PUBLIC_ENABLE_PERMITS === "true" && (
+              <Link href="/permits" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/permits' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <ClipboardList size={20} className="text-emerald-400" />
               <span>Permits</span>
             </Link>
-            <Link href="/policies" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/policies' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
-              <Settings size={20} className="text-amber-400" />
-              <span>Policies</span>
-            </Link>
-            <Link href="/team" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/team' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
-              <Users size={20} className="text-indigo-400" />
-              <span>Team Access</span>
-            </Link>
+            )}
             <Link href="/audits" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/audits' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <History size={20} className="text-orange-400" />
-              <span>Audit History</span>
+              <span>Inspection History</span>
             </Link>
             <Link href="/copilot" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/copilot' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <Bot size={20} className="text-pink-400" />
               <span>EHS Co-Pilot</span>
+            </Link>
+            <Link href="/policies" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/policies' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
+              <Settings size={20} className="text-amber-400" />
+              <span>Safety Policies</span>
+            </Link>
+            <Link href="/team" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/team' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
+              <Users size={20} className="text-indigo-400" />
+              <span>Team Access</span>
             </Link>
           </nav>
         </div>

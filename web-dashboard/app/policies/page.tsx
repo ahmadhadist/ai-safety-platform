@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Save, Plus, Trash2, ShieldCheck, Activity, Upload, Sun, Thermometer, HeartPulse, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
+import { RISK_CATEGORIES, riskKey, riskLabel, humanize } from "@/lib/labels";
 
 export default function PoliciesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -44,13 +45,13 @@ export default function PoliciesPage() {
   const [ppe, setPpe] = useState(["Helmet", "Safety_Shoes"]);
   const [newPpe, setNewPpe] = useState("");
 
-  // Industrial Hygiene & Toyota STOP 6 States
+  // Industrial Hygiene & fatal-risk category
   const [enableHealth, setEnableHealth] = useState(false);
   const [minLux, setMinLux] = useState(300);
   const [maxTemp, setMaxTemp] = useState(34);
   const [maxHumidity, setMaxHumidity] = useState(75);
   const [checkErgonomics, setCheckErgonomics] = useState(true);
-  const [stop6Category, setStop6Category] = useState("STOP_6_6_HEAT_HAZARDS");
+  const [riskCategory, setRiskCategory] = useState("FIRE_HEAT_CHEMICAL");
 
   // Safety Perimeter & 5S
   const [enableSafetyPerimeter, setEnableSafetyPerimeter] = useState(false);
@@ -91,7 +92,7 @@ export default function PoliciesPage() {
     setNewTitle(template.title);
     setNewType(template.permit_type);
     setPpe(template.dynamic_rules?.required_ppe || []);
-    setStop6Category(template.dynamic_rules?.toyota_stop6_category || "STOP_6_6_HEAT_HAZARDS");
+    setRiskCategory(riskKey(template.dynamic_rules?.primary_risk_category || template.dynamic_rules?.toyota_stop6_category));
     
     if (template.dynamic_rules?.industrial_hygiene) {
       setEnableHealth(true);
@@ -118,10 +119,10 @@ export default function PoliciesPage() {
     const dynamic_rules: any = {
       required_ppe: ppe,
       severity_mapping: {
-        CRITICAL: "SUSPEND_PERMIT",
+        CRITICAL: "STOP_WORK",
         MEDIUM: "ISSUE_WARNING"
       },
-      toyota_stop6_category: stop6Category
+      primary_risk_category: riskCategory
     };
 
     if (enableHealth) {
@@ -220,10 +221,10 @@ export default function PoliciesPage() {
                 className={`bg-white p-4 rounded-xl shadow-sm border transition-colors cursor-pointer group ${selectedTemplate?.id === t.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300'}`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-bold text-blue-600">{t.permit_type}</p>
-                  {t.dynamic_rules?.toyota_stop6_category && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-rose-50 text-rose-700 font-bold rounded border border-rose-200">
-                      STOP 6
+                  <p className="text-xs font-bold text-blue-600">{humanize(t.permit_type)}</p>
+                  {t.dynamic_rules?.compiled_by_ai && (
+                    <span className="text-[9px] px-1.5 py-0.5 bg-violet-50 text-violet-700 font-bold rounded border border-violet-200">
+                      AI-COMPILED SOP
                     </span>
                   )}
                 </div>
@@ -263,7 +264,7 @@ export default function PoliciesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Permit Type</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Work Category</label>
                     <select 
                       value={newType}
                       onChange={e => setNewType(e.target.value)}
@@ -311,27 +312,23 @@ export default function PoliciesPage() {
                   </p>
                 </div>
 
-                {/* Toyota STOP 6 Mapping */}
+                {/* Fatal-risk category */}
                 <div className="bg-rose-50/60 border border-rose-200 p-4 rounded-xl space-y-2">
                   <label className="block text-sm font-bold text-rose-950 flex items-center gap-2">
                     <ShieldAlert size={16} className="text-rose-600" />
-                    Toyota STOP 6 (トヨタ ストップ6) Mapping
+                    Primary Fatal-Risk Category
                   </label>
                   <p className="text-xs text-rose-700">
-                    Petakan izin kerja ini ke dalam 6 kategori kecelakaan fatal standar Toyota (TPS Safety).
+                    The life-threatening hazard family this policy mainly guards against. Used for risk analytics.
                   </p>
-                  <select 
-                    value={stop6Category}
-                    onChange={e => setStop6Category(e.target.value)}
+                  <select
+                    value={riskCategory}
+                    onChange={e => setRiskCategory(e.target.value)}
                     className="w-full border border-rose-300 rounded-lg p-2.5 outline-none focus:border-rose-500 text-sm bg-white font-medium text-slate-800"
                   >
-                    <option value="STOP_6_1_APPARATUS">1. Apparatus (Moving Machinery / Pinch Points / LOTO)</option>
-                    <option value="STOP_6_2_HEAVY_OBJECTS">2. Heavy Objects (Dropped Items / Crane / Hoist)</option>
-                    <option value="STOP_6_3_VEHICLES">3. Vehicles (Forklift Collisions / AGV / Pedestrians)</option>
-                    <option value="STOP_6_4_DROP_FALL">4. Drop / Fall (Working at Heights / Scaffolding)</option>
-                    <option value="STOP_6_5_ELECTRIC_SHOCK">5. Electric Shock (High Voltage Electricity)</option>
-                    <option value="STOP_6_6_HEAT_HAZARDS">6. Heat / Fire (Welding Fires / Hazardous Chemicals / Hot Liquids)</option>
-                    <option value="STOP_6_GENERAL">General Safety (Standard Shopfloor Safety)</option>
+                    {Object.entries(RISK_CATEGORIES).map(([key, v]) => (
+                      <option key={key} value={key}>{v.label}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -432,7 +429,7 @@ export default function PoliciesPage() {
                     <div>
                       <h4 className={`text-sm font-bold flex items-center gap-2 ${enableSafetyPerimeter ? 'text-indigo-950' : 'text-slate-700'}`}>
                         <ShieldCheck size={16} className={enableSafetyPerimeter ? 'text-indigo-600' : 'text-slate-400'} />
-                        Safety Perimeter & Toyota 5S (トヨタ 5S)
+                        Safety Perimeter & 5S Housekeeping
                       </h4>
                       <p className={`text-xs mt-0.5 ${enableSafetyPerimeter ? 'text-indigo-700' : 'text-slate-500'}`}>
                         Detect clean workspaces free from tripping hazards, and active protection.
@@ -530,14 +527,14 @@ export default function PoliciesPage() {
                   </div>
                 </div>
                 
-                {/* Toyota STOP 6 & Health Details */}
-                {selectedTemplate.dynamic_rules?.toyota_stop6_category && (
+                {/* Fatal-risk category & Health Details */}
+                {(selectedTemplate.dynamic_rules?.primary_risk_category || selectedTemplate.dynamic_rules?.toyota_stop6_category) && (
                   <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl">
                     <p className="text-xs font-bold text-rose-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                      <ShieldAlert size={14} /> Toyota STOP 6 Standard
+                      <ShieldAlert size={14} /> Primary Fatal-Risk Category
                     </p>
                     <p className="text-sm font-bold text-rose-950">
-                      {selectedTemplate.dynamic_rules.toyota_stop6_category}
+                      {riskLabel(selectedTemplate.dynamic_rules.primary_risk_category || selectedTemplate.dynamic_rules.toyota_stop6_category)}
                     </p>
                   </div>
                 )}

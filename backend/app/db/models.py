@@ -114,7 +114,10 @@ class WorkPermit(Base):
 class SafetyAudit(Base):
     __tablename__ = "safety_audits"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    work_permit_id = Column(UUID(as_uuid=True), ForeignKey("work_permits.id"), nullable=False)
+    # Inspections run against a safety policy at a location; permits are optional (post-hackathon workflow).
+    work_permit_id = Column(UUID(as_uuid=True), ForeignKey("work_permits.id"), nullable=True)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("permit_templates.id"), nullable=True)
+    location = Column(String)
     inspector_id = Column(String, nullable=False)
     photo_url = Column(String)
     ai_raw_json = Column(JSONB)
@@ -124,6 +127,7 @@ class SafetyAudit(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     work_permit = relationship("WorkPermit", back_populates="safety_audits")
+    template = relationship("PermitTemplate")
     corrective_actions = relationship("CorrectiveAction", back_populates="safety_audit")
 
 class CorrectiveAction(Base):

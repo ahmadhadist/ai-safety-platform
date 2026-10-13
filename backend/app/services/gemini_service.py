@@ -78,47 +78,42 @@ class GeminiAuditService:
     # ------------------------------------------------------------------ Vision audit
     def analyze_permit_safety(self, image_bytes: bytes, mime_type: str, rules_context: dict) -> AuditResult:
         system_instruction = (
-            "You are an expert Environmental Health and Safety (EHS) Inspector for a global manufacturing company. "
-            "Your job is to strictly enforce safety compliance based on the specific permit rules provided. "
-            "Evaluate the provided image against the 'dynamic_rules'. Only report what is actually visible; never guess. "
-            "IMPORTANT: All notes, descriptions, recommendations, and headlines MUST be written bilingually in Indonesian and English (e.g. 'Pekerja aman. / Worker is safe.'). "
-            "Additionally, whenever mentioning 5S or STOP 6 terminology, always include its authentic Japanese Kanji and reading (e.g., 整理 Seiri, 整頓 Seiton, 清掃 Seiso, トヨタ ストップ6)."
+            "You are an expert Environmental Health and Safety (EHS) inspector. "
+            "Evaluate the workplace image strictly against the safety policy provided. "
+            "Only report what is actually visible; never guess. Write all text in clear, concise English."
         )
 
         prompt = f"""
-        Analyze the following inspection photo against this specific permit's dynamic rules:
+        Inspect this workplace photo against the following safety policy and context:
 
-        DYNAMIC PERMIT RULES (JSON):
+        SAFETY POLICY & CONTEXT (JSON):
         {json.dumps(rules_context, indent=2)}
 
-        Identify any missing required PPE, environmental hazards, forbidden hazards, and industrial hygiene factors.
+        Identify missing required PPE, unsafe acts, unsafe conditions, forbidden hazards and industrial-hygiene risks.
 
         VISUAL GROUNDING:
-        - For EVERY observation, set "box_2d" = [ymin, xmin, ymax, xmax] normalized to 0-1000, tightly enclosing the worker or object the observation is about.
-        - Count every visible person in "worker_count_detected" (used to reconcile against the permit's worker manifest).
+        - For EVERY observation, set "box_2d" = [ymin, xmin, ymax, xmax] normalized to 0-1000, tightly enclosing the person or object it refers to.
+        - Count every visible person in "worker_count_detected".
 
-        OCCUPATIONAL HEALTH & INDUSTRIAL HYGIENE (PERMENAKER 5/2018):
-        - AI Sensor Fusion (IoT): If 'sensor_data_fusion' exists in the rules JSON, compare its 'temperature_c' and 'humidity_pct' against the permit's 'max_temperature_c' and 'max_humidity_pct' rules. If the actual IoT sensor temperature exceeds the maximum allowed, you MUST add a "HEALTH_HAZARD" observation for Heat Stress and set enforcement to "ISSUE_WARNING" or "SUSPEND_PERMIT".
-        - Visual Lighting Assessment: Check if the work area is well-lit or dangerously dark/shadowed for high-risk work based on min_lux requirement.
-        - Ergonomics & Posture: Check if any worker is bending severely (>30 degrees) at the spine or using improper manual lifting posture that risks musculoskeletal injury.
+        OCCUPATIONAL HEALTH & HYGIENE:
+        - Sensor fusion: if 'sensor_data_fusion' is present, compare temperature_c / humidity_pct with the policy's max_temperature_c / max_humidity_pct (default heat-stress limit 35 C). If exceeded, add a HEALTH_HAZARD observation for heat stress.
+        - Lighting: judge whether the work area is adequately lit for the task (consider min_lux if given).
+        - Ergonomics: flag severe spine flexion (>30 degrees) or unsafe manual lifting.
 
-        SAFETY PERIMETER & TOYOTA 5S (HOUSEKEEPING):
-        - 5S Housekeeping (Seiri/Seiton/Seiso): Check for clutter, tripping hazards, spills, or unorganized tools in the immediate work zone.
-        - Safety Perimeter: Check if appropriate barricades, safety cones, warning signs, or fire extinguishers (APAR for Hot Work) are visibly present when required by the rules.
+        HOUSEKEEPING (5S) & PERIMETER:
+        - Clutter, tripping hazards, spills or disorganised tools in the work zone.
+        - Barricades, cones, warning signs and fire extinguishers where the work requires them.
 
-        TOYOTA STOP 6 MAPPING (stop6_category):
-        - STOP_6_1_APPARATUS (moving machinery, pinch points, LOTO)
-        - STOP_6_2_HEAVY_OBJECTS (overhead crane, dropped items, falling parts)
-        - STOP_6_3_VEHICLES (forklifts, tow tractors, pedestrian walkways)
-        - STOP_6_4_DROP_FALL (working at height, scaffolding, ladders, roof)
-        - STOP_6_5_ELECTRIC_SHOCK (high-voltage electrical, live panels)
-        - STOP_6_6_HEAT_HAZARDS (welding hot work, fires, chemicals, molten metal)
-        - STOP_6_GENERAL (standard shopfloor safety)
+        RISK CATEGORY (risk_category) - the most serious fatal-risk family present:
+        MACHINERY (moving parts, pinch points, lockout/tagout), FALLING_OBJECTS (suspended loads, dropped objects),
+        VEHICLES (forklifts, traffic, pedestrian routes), WORKING_AT_HEIGHT (ladders, scaffolds, edges),
+        ELECTRICAL (live panels, cables), FIRE_HEAT_CHEMICAL (hot work, flammables, chemicals),
+        CONFINED_SPACE (tanks, pits, manholes), GENERAL (routine workplace safety).
 
-        ENFORCEMENT RULES:
-        - For VENDOR / CONTRACTOR high-risk work (Hot Work, Working at Height): if critical danger is detected, set enforcement_action "SUSPEND_PERMIT".
-        - For INTERNAL FACTORY SHOPFLOOR / DAILY WORKERS: do not suspend the line for standard PPE omissions; use "ISSUE_WARNING" (supervisor coaching).
-        - For 100% compliant conditions, use "NO_ACTION".
+        ENFORCEMENT (enforcement_action):
+        - STOP_WORK: imminent danger of serious injury or fatality (e.g. no fall protection at height, sparks near flammables).
+        - ISSUE_WARNING: a violation that must be corrected but is not immediately life-threatening.
+        - NO_ACTION: fully compliant.
         """
 
         response, model_name, latency_ms = self._generate(
@@ -148,8 +143,8 @@ class GeminiAuditService:
         """
         lang_instruction = {"en": "professional English", "ja": "professional Japanese (日本語)"}.get(language, "professional Indonesian")
         system_instruction = f"""You are an expert EHS (Environment, Health, and Safety) Senior Manager acting as an autonomous AI Co-Pilot.
-You have TOOLS that query the company's LIVE safety database (work permits, worker manifests, AI audit history, uploaded SOPs).
-1. GROUND TRUTH FIRST: for any question about this company's permits, contractors, violations, trends or internal rules, CALL THE TOOLS — never invent permit codes, numbers, names or statistics. Cite permit codes and figures exactly as the tools return them.
+You have TOOLS that query the company's LIVE safety database (AI inspection history by location and risk category, safety policies, uploaded SOPs).
+1. GROUND TRUTH FIRST: for any question about this company's locations, violations, trends, policies or internal rules, CALL THE TOOLS — never invent locations, numbers or statistics. Cite figures exactly as the tools return them.
 2. GLOBAL SAFETY INTELLIGENCE: for emergency response (chemical spills, ammonia, fire, toxic gas), first aid, OSHA, ISO 45001 or technical guidance not covered by internal SOPs, give authoritative step-by-step guidance from global best practice, and say it is general guidance.
 Do NOT use LaTeX (write NH3, not $NH_3$). Be analytical, concise and structured with Markdown. Answer in {lang_instruction}."""
 

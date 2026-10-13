@@ -1,8 +1,10 @@
 import copy
 import io
 import math
-from datetime import datetime
-from typing import List
+import re
+from collections import Counter
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 import PyPDF2
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
@@ -48,10 +50,6 @@ def _permit_dict(p: WorkPermit) -> dict:
         "dynamic_rules": p.template.dynamic_rules,
         "worker_manifest": p.worker_manifest or [],
     }
-
-
-def _is_internal(permit: WorkPermit) -> bool:
-    return "internal" in (permit.contractor_company or "").lower() or permit.template.permit_type == PermitType.GENERAL
 
 
 # ---------------------------------------------------------------- System
@@ -200,10 +198,10 @@ def chat_with_copilot(request: ChatRequest, db: Session = Depends(get_db), curre
         return {
             "reply": (
                 "### ⚠️ AI temporarily unavailable — live data snapshot\n"
-                f"- Permits by status: {overview['permits_by_status']}\n"
-                f"- AI audits recorded: {overview['total_ai_audits']} "
+                f"- AI inspections recorded: {overview['total_ai_inspections']} "
                 f"(compliance {overview['compliance_rate_pct']}%)\n"
-                f"- Critical violations: {overview['critical_violations']}\n\n"
+                f"- Critical violations: {overview['critical_violations']}\n"
+                f"- Stop-work orders: {overview['stop_work_orders']}\n\n"
                 "Please retry in a moment."
             ),
             "tool_calls": [{"name": "get_safety_overview", "args": {}}],
@@ -238,26 +236,28 @@ def _reconcile_headcount(result: AuditResult, manifest: list) -> None:
 @router.post("/inspections/audit", response_model=AuditResult)
 async def process_inspection_audit(
     background_tasks: BackgroundTasks,
-    permit_id: str = Form(...),
     image: UploadFile = File(...),
+    policy_id: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    permit_id: Optional[str] = Form(None),
     sensor_temperature_c: float = Form(None),
     sensor_humidity_pct: float = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    permit = db.query(WorkPermit).filter(WorkPermit.id == permit_id).first()
-    if not permit:
+    """Inspect a photo against a safety policy at a location. A work permit is optional (post-hackathon workflow)."""
+    permit = db.query(WorkPermit).filter(WorkPermit.id == permit_id).first() if permit_id else None
+    if permit_id and not permit:
         raise HTTPException(status_code=404, detail="Work permit not found")
+    policy = permit.template if permit else db.query(PermitTemplate).filter(PermitTemplate.id == policy_id).first() if policy_id else None
+    if not policy:
+        raise HTTPException(status_code=400, detail="Select a safety policy")
+    location = (location or (permit.location_zone if permit else "") or "Unspecified area").strip()[:120]
 
-    # Deep-copy: never mutate the template's JSONB in the session.
-    rules_context = copy.deepcopy(permit.template.dynamic_rules or {})
+    # Deep-copy: never mutate the policy's JSONB in the session.
+    rules_context = copy.deepcopy(policy.dynamic_rules or {})
     rules_context.pop("extracted_text", None)
-    is_internal = _is_internal(permit)
-    rules_context["permit_context"] = {
-        "permit_type": permit.template.permit_type.value,
-        "workforce": "INTERNAL_FACTORY_SHOPFLOOR" if is_internal else "EXTERNAL_VENDOR_CONTRACTOR",
-        "location_zone": permit.location_zone,
-    }
+    rules_context["inspection_context"] = {"policy": policy.title, "category": policy.permit_type.value, "location": location}
     if sensor_temperature_c is not None or sensor_humidity_pct is not None:
         rules_context["sensor_data_fusion"] = {"temperature_c": sensor_temperature_c, "humidity_pct": sensor_humidity_pct}
 
@@ -268,40 +268,42 @@ async def process_inspection_audit(
     try:
         result = await run_in_threadpool(gemini_service.analyze_permit_safety, image_bytes, mime_type, rules_context)
     except AIUnavailableError as e:
-        # Never fabricate a verdict for a safety decision: fail loudly, record nothing, suspend nothing.
+        # Never fabricate a verdict for a safety decision: fail loudly and record nothing.
         raise HTTPException(status_code=503, detail=f"AI inspector unavailable, no verdict recorded. {e}")
 
-    _reconcile_headcount(result, permit.worker_manifest or [])
-
-    # 2. Enforcement policy: vendors get suspended on critical danger; internal lines keep running with coaching.
-    if is_internal and result.enforcement_action == "SUSPEND_PERMIT":
-        result.enforcement_action = "ISSUE_WARNING"
+    result.location = location
+    result.policy_title = policy.title
+    if permit:
+        _reconcile_headcount(result, permit.worker_manifest or [])
     if result.status == "NON_COMPLIANT" and result.enforcement_action == "NO_ACTION":
         result.enforcement_action = "ISSUE_WARNING"
-    if result.enforcement_action == "SUSPEND_PERMIT":
+    if permit and result.enforcement_action == "STOP_WORK":
         permit.status = PermitStatus.SUSPENDED
 
-    # 3. Smart tiered retention: violations are kept as legal evidence, compliant photos are purged (privacy by design).
+    # 2. Smart tiered retention: violations are kept as legal evidence, compliant photos are purged (privacy by design).
+    evidence_key = (permit.permit_code if permit else re.sub(r"[^A-Za-z0-9]+", "-", location).strip("-") or "area")
     if result.status == "NON_COMPLIANT":
         result.photo_url = storage_service.upload_violation_evidence(
-            image_bytes=image_bytes, mime_type=mime_type, permit_code=permit.permit_code, severity=result.severity
+            image_bytes=image_bytes, mime_type=mime_type, permit_code=evidence_key, severity=result.severity
         )
         result.data_retention_policy = "PERMANENT_LEGAL_EVIDENCE (" + ("GCS" if storage_service.enabled else "LOCAL") + ")"
     else:
         storage_service.purge_compliant_photo()
         result.data_retention_policy = "AUTO_PURGED (Zero-Storage / Privacy Preserved)"
 
-    # 4. Real-time escalation for every violation, sent in the background.
+    # 3. Real-time escalation for every violation, sent in the background.
     if result.status == "NON_COMPLIANT":
         result.alerts_dispatched = notification_service.configured_channels()
         violations = "\n".join(f"- {o.description}" for o in result.observations if o.is_infraction) or result.summary_headline
         background_tasks.add_task(
             notification_service.dispatch_violation_alerts,
-            permit.permit_code, result.severity, result.enforcement_action, violations, result.photo_url, image_bytes,
+            location, result.severity, result.enforcement_action, violations, result.photo_url, image_bytes,
         )
 
     db.add(SafetyAudit(
-        work_permit_id=permit.id,
+        work_permit_id=permit.id if permit else None,
+        template_id=policy.id,
+        location=location,
         inspector_id=str(current_user.id),
         photo_url=result.photo_url,
         ai_raw_json=result.model_dump(),
@@ -322,8 +324,8 @@ def get_audit_history(page: int = 1, limit: int = 10, db: Session = Depends(get_
         "data": [
             {
                 "id": str(a.id),
-                "permit_code": a.work_permit.permit_code if a.work_permit else "N/A",
-                "contractor_company": a.work_permit.contractor_company if a.work_permit else "N/A",
+                "location": a.location or (a.work_permit.location_zone if a.work_permit else None),
+                "policy_title": a.template.title if a.template else (a.work_permit.template.title if a.work_permit else None),
                 "inspector_id": a.inspector_id,
                 "photo_url": a.photo_url,
                 "compliance_status": a.compliance_status.value,
@@ -381,13 +383,36 @@ def create_user(user: UserCreate, db: Session = Depends(get_db), current_user: U
 
 # ---------------------------------------------------------------- Dashboard
 @router.get("/dashboard/metrics", response_model=DashboardMetrics)
-def get_dashboard_metrics(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
-    total_audits = db.query(SafetyAudit).count()
-    compliant_audits = db.query(SafetyAudit).filter(SafetyAudit.compliance_status == ComplianceStatus.COMPLIANT).count()
-    suspended = db.query(WorkPermit).filter(WorkPermit.status == PermitStatus.SUSPENDED).all()
+def get_dashboard_metrics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    audits = db.query(SafetyAudit).order_by(SafetyAudit.created_at.desc()).all()
+    violations = [a for a in audits if a.compliance_status == ComplianceStatus.NON_COMPLIANT]
+    action = lambda a: (a.ai_raw_json or {}).get("enforcement_action")
+    risk = lambda a: (a.ai_raw_json or {}).get("risk_category") or (a.ai_raw_json or {}).get("stop6_category") or "GENERAL"
+
+    today = datetime.utcnow().date()
+    days = [today - timedelta(days=i) for i in range(13, -1, -1)]
+    per_day = Counter(a.created_at.date() for a in audits)
+    bad_per_day = Counter(a.created_at.date() for a in violations)
+
     return DashboardMetrics(
-        active_permits=db.query(WorkPermit).filter(WorkPermit.status == PermitStatus.APPROVED).count(),
-        compliance_rate=round(compliant_audits / total_audits * 100, 2) if total_audits else 100.0,
-        critical_violations=db.query(SafetyAudit).filter(SafetyAudit.severity_level == SeverityLevel.CRITICAL).count(),
-        suspended_permits=[{"permit_code": p.permit_code, "contractor": p.contractor_company} for p in suspended],
+        total_inspections=len(audits),
+        compliance_rate=round((len(audits) - len(violations)) / len(audits) * 100, 1) if audits else 100.0,
+        critical_violations=sum(a.severity_level == SeverityLevel.CRITICAL for a in audits),
+        stop_work_orders=sum(action(a) in ("STOP_WORK", "SUSPEND_PERMIT") for a in audits),
+        daily_trend=[{"date": d.isoformat(), "inspections": per_day[d], "violations": bad_per_day[d]} for d in days],
+        risk_breakdown=[{"risk_category": k, "count": v} for k, v in Counter(risk(a) for a in violations).most_common()],
+        location_hotspots=[{"location": k, "violations": v} for k, v in Counter(a.location or "Unspecified" for a in violations).most_common(5)],
+        recent_incidents=[
+            {
+                "id": str(a.id),
+                "at": a.created_at.isoformat(),
+                "location": a.location,
+                "severity": a.severity_level.value,
+                "risk_category": risk(a),
+                "action": action(a),
+                "headline": (a.ai_raw_json or {}).get("summary_headline"),
+                "photo_url": a.photo_url,
+            }
+            for a in violations[:6]
+        ],
     )

@@ -2,14 +2,15 @@
 import { useState, useEffect } from "react";
 import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera, HeartPulse, Sun, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
+import { ACTION_LABEL, actionKey, riskLabel, humanize } from "@/lib/labels";
 import EvidenceViewer, { GroundedObservation } from "@/components/EvidenceViewer";
 
 type Observation = GroundedObservation;
 
 type AuditItem = {
   id: string;
-  permit_code: string;
-  contractor_company: string;
+  location: string | null;
+  policy_title: string | null;
   inspector_id: string;
   photo_url: string | null;
   compliance_status: string;
@@ -26,6 +27,7 @@ type AuditItem = {
     data_retention_policy?: string;
     model_used?: string;
     stop6_category?: string;
+    risk_category?: string;
     health_evaluation?: {
       lighting_condition?: string;
       lighting_notes?: string;
@@ -81,18 +83,18 @@ export default function AuditsPage() {
 
   const getStatusBadge = (status: string) => {
     if (status === "COMPLIANT") return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md flex items-center gap-1"><CheckCircle size={12}/> COMPLIANT</span>;
-    return <span className="px-2 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-md flex items-center gap-1"><ShieldAlert size={12}/> NON COMPLIANT</span>;
+    return <span className="px-2 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-md flex items-center gap-1 whitespace-nowrap"><ShieldAlert size={12}/> VIOLATION</span>;
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
             <History className="text-orange-500 w-8 h-8" /> 
-            Audit History & Analysis
+            Inspection History
           </h2>
-          <p className="text-slate-500 mt-1">Review historical safety inspections, AI computer vision reasoning, and legal evidence.</p>
+          <p className="text-slate-500 mt-1">Every AI inspection with its visual evidence, reasoning and enforcement action.</p>
         </div>
       </div>
 
@@ -101,12 +103,12 @@ export default function AuditsPage() {
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
             <tr>
               <th className="p-4">Date & Time</th>
-              <th className="p-4">Permit Code</th>
-              <th className="p-4">Contractor</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Toyota STOP 6 (トヨタ ストップ6)</th>
+              <th className="p-4">Location</th>
+              <th className="p-4">Policy</th>
+              <th className="p-4">Result</th>
+              <th className="p-4">Risk Category</th>
               <th className="p-4">Severity</th>
-              <th className="p-4 text-center">Auto Action</th>
+              <th className="p-4">Action</th>
               <th className="p-4 text-right">Details</th>
             </tr>
           </thead>
@@ -118,26 +120,20 @@ export default function AuditsPage() {
             ) : (
               audits.map(audit => (
                 <tr key={audit.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 text-slate-700 font-medium">{new Date(audit.created_at).toLocaleString()}</td>
-                  <td className="p-4 text-slate-900 font-bold">{audit.permit_code}</td>
-                  <td className="p-4 text-slate-600">{audit.contractor_company}</td>
+                  <td className="p-4 text-slate-700 font-medium whitespace-nowrap">{new Date(audit.created_at + (audit.created_at.endsWith("Z") ? "" : "Z")).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td className="p-4 text-slate-900 font-semibold">{audit.location || "–"}</td>
+                  <td className="p-4 text-slate-600">{audit.policy_title || "–"}</td>
                   <td className="p-4">{getStatusBadge(audit.compliance_status)}</td>
                   <td className="p-4">
-                    {audit.ai_raw_json?.stop6_category ? (
-                      <span className="px-2 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold rounded border border-rose-200 block truncate max-w-[120px]" title={audit.ai_raw_json.stop6_category}>
-                        {audit.ai_raw_json.stop6_category.replace('STOP_6_', '').replace(/_/g, ' ')}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 text-xs">-</span>
-                    )}
+                    <span className="text-slate-700 text-xs font-medium">{riskLabel(audit.ai_raw_json)}</span>
                   </td>
                   <td className="p-4">{getSeverityBadge(audit.severity_level)}</td>
-                  <td className="p-4 text-center">
-                    {audit.auto_action_taken ? (
-                      <span className="text-purple-600 font-semibold bg-purple-50 px-2 py-1 rounded">Yes</span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+                  <td className="p-4">
+                    {(() => {
+                      const a = actionKey(audit.ai_raw_json?.enforcement_action);
+                      const style = a === "STOP_WORK" ? "text-red-600" : a === "ISSUE_WARNING" ? "text-amber-600" : "text-slate-400";
+                      return <span className={`text-xs font-semibold whitespace-nowrap ${style}`}>{ACTION_LABEL[a]}</span>;
+                    })()}
                   </td>
                   <td className="p-4 text-right">
                     <button 
@@ -209,7 +205,7 @@ export default function AuditsPage() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-1">AI Safety Analysis</h3>
-                  <p className="text-slate-500 text-sm">Permit: <span className="font-bold text-slate-700">{selectedAudit.permit_code}</span></p>
+                  <p className="text-slate-500 text-sm">{selectedAudit.location || "Unspecified area"} · {selectedAudit.policy_title || "No policy"}</p>
                 </div>
                 <button onClick={() => setSelectedAudit(null)} className="text-slate-400 hover:text-slate-700 p-2 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors">
                   ✕
@@ -224,13 +220,11 @@ export default function AuditsPage() {
                     {getStatusBadge(selectedAudit.compliance_status)}
                     {getSeverityBadge(selectedAudit.severity_level)}
                     <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
-                      Action: {selectedAudit.ai_raw_json.enforcement_action}
+                      Action: {ACTION_LABEL[actionKey(selectedAudit.ai_raw_json.enforcement_action)]}
                     </span>
-                    {selectedAudit.ai_raw_json.stop6_category && (
-                      <span className="px-2 py-1 bg-rose-100 text-rose-800 text-xs font-bold rounded-md flex items-center gap-1 border border-rose-200">
-                        <ShieldAlert size={12} /> {selectedAudit.ai_raw_json.stop6_category}
-                      </span>
-                    )}
+                    <span className="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md flex items-center gap-1 border border-slate-200">
+                      <ShieldAlert size={12} /> {riskLabel(selectedAudit.ai_raw_json)}
+                    </span>
                   </div>
                 </div>
 
@@ -239,7 +233,7 @@ export default function AuditsPage() {
                   <div className="bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl space-y-3">
                     <h4 className="font-bold text-xs text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
                       <HeartPulse size={14} className="text-emerald-600" />
-                      Industrial Hygiene & Health Assessment (Permenaker 5/2018)
+                      Industrial Hygiene & Health
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
@@ -277,12 +271,12 @@ export default function AuditsPage() {
                   </div>
                 )}
 
-                {/* Safety Perimeter & Toyota 5S Assessment */}
+                {/* Safety Perimeter & 5S Assessment */}
                 {selectedAudit.ai_raw_json.safety_perimeter_evaluation && (
                   <div className="bg-indigo-50/80 border border-indigo-200 p-4 rounded-xl space-y-3">
                     <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-indigo-600" />
-                      Safety Perimeter & Toyota 5S (トヨタ 5S)
+                      Safety Perimeter & 5S Housekeeping
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">

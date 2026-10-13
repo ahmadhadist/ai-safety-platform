@@ -10,112 +10,90 @@ from typing import Callable, List
 
 from sqlalchemy.orm import Session
 
-from app.db.models import ComplianceStatus, PermitStatus, PermitTemplate, SafetyAudit, SeverityLevel, WorkPermit
+from app.db.models import ComplianceStatus, PermitTemplate, SafetyAudit, SeverityLevel
+
+
+def _risk(a: SafetyAudit) -> str:
+    raw = a.ai_raw_json or {}
+    return raw.get("risk_category") or raw.get("stop6_category") or "GENERAL"
+
+
+def _audit_summary(a: SafetyAudit) -> dict:
+    raw = a.ai_raw_json or {}
+    return {
+        "at_utc": a.created_at.isoformat(timespec="minutes"),
+        "location": a.location,
+        "policy": a.template.title if a.template else None,
+        "status": a.compliance_status.value,
+        "severity": a.severity_level.value,
+        "risk_category": _risk(a),
+        "action": raw.get("enforcement_action"),
+        "headline": raw.get("summary_headline"),
+        "infractions": [o.get("description") for o in raw.get("observations", []) if o.get("is_infraction")],
+    }
 
 
 def build_copilot_tools(db: Session) -> List[Callable]:
     def get_safety_overview() -> dict:
-        """Get a live snapshot of plant safety: permit counts by status, total AI audits, compliance rate and critical violation count."""
-        total_audits = db.query(SafetyAudit).count()
-        compliant = db.query(SafetyAudit).filter(SafetyAudit.compliance_status == ComplianceStatus.COMPLIANT).count()
+        """Get a live snapshot of site safety: total AI inspections, compliance rate, critical violations, stop-work orders and monitored locations."""
+        audits = db.query(SafetyAudit).all()
+        compliant = sum(a.compliance_status == ComplianceStatus.COMPLIANT for a in audits)
         return {
-            "permits_by_status": {s.value: db.query(WorkPermit).filter(WorkPermit.status == s).count() for s in PermitStatus},
-            "total_ai_audits": total_audits,
-            "compliance_rate_pct": round(compliant / total_audits * 100, 1) if total_audits else None,
-            "critical_violations": db.query(SafetyAudit).filter(SafetyAudit.severity_level == SeverityLevel.CRITICAL).count(),
+            "total_ai_inspections": len(audits),
+            "compliance_rate_pct": round(compliant / len(audits) * 100, 1) if audits else None,
+            "critical_violations": sum(a.severity_level == SeverityLevel.CRITICAL for a in audits),
+            "stop_work_orders": sum((a.ai_raw_json or {}).get("enforcement_action") in ("STOP_WORK", "SUSPEND_PERMIT") for a in audits),
+            "monitored_locations": sorted({a.location for a in audits if a.location}),
             "as_of_utc": datetime.utcnow().isoformat(timespec="minutes"),
         }
 
-    def list_work_permits(status: str = "ALL") -> list:
-        """List work permits. status: one of ALL, APPROVED, SUSPENDED, COMPLETED."""
-        q = db.query(WorkPermit)
-        if status.upper() in PermitStatus.__members__:
-            q = q.filter(WorkPermit.status == PermitStatus(status.upper()))
+    def list_safety_policies() -> list:
+        """List the safety policies (rule sets) the AI inspector enforces, with their required PPE and forbidden hazards."""
         return [
             {
-                "permit_code": p.permit_code,
-                "type": p.template.permit_type.value,
-                "contractor": p.contractor_company,
-                "lead": p.contractor_lead_name,
-                "zone": p.location_zone,
-                "status": p.status.value,
-                "workers_on_manifest": len(p.worker_manifest or []),
-                "valid_until_utc": p.end_time.isoformat(timespec="minutes") if p.end_time else None,
+                "title": t.title,
+                "category": t.permit_type.value,
+                "required_ppe": (t.dynamic_rules or {}).get("required_ppe", []),
+                "prerequisites": (t.dynamic_rules or {}).get("environmental_prerequisites", []),
+                "forbidden_hazards": (t.dynamic_rules or {}).get("forbidden_hazards", []),
+                "from_uploaded_sop": bool((t.dynamic_rules or {}).get("extracted_text")),
             }
-            for p in q.all()
+            for t in db.query(PermitTemplate).all()
         ]
 
-    def get_permit_details(permit_code: str) -> dict:
-        """Get full details of one work permit by its code (e.g. HW-2026-0891): rules, worker manifest and its 5 most recent AI audits."""
-        p = db.query(WorkPermit).filter(WorkPermit.permit_code == permit_code.strip()).first()
-        if not p:
-            return {"error": f"No permit with code {permit_code}"}
-        audits = sorted(p.safety_audits, key=lambda a: a.created_at, reverse=True)[:5]
-        return {
-            "permit_code": p.permit_code,
-            "status": p.status.value,
-            "contractor": p.contractor_company,
-            "lead": p.contractor_lead_name,
-            "zone": p.location_zone,
-            "template": p.template.title,
-            "rules": p.template.dynamic_rules,
-            "worker_manifest": p.worker_manifest or [],
-            "recent_audits": [
-                {
-                    "at_utc": a.created_at.isoformat(timespec="minutes"),
-                    "status": a.compliance_status.value,
-                    "severity": a.severity_level.value,
-                    "headline": (a.ai_raw_json or {}).get("summary_headline"),
-                    "action": (a.ai_raw_json or {}).get("enforcement_action"),
-                }
-                for a in audits
-            ],
-        }
-
-    def get_recent_violations(limit: int = 10, min_severity: str = "LOW") -> list:
-        """List the most recent NON_COMPLIANT AI audits, newest first. min_severity: LOW, MEDIUM or CRITICAL."""
+    def get_recent_violations(limit: int = 10, min_severity: str = "LOW", location: str = "") -> list:
+        """List the most recent NON_COMPLIANT AI inspections, newest first. min_severity: LOW, MEDIUM or CRITICAL. location: optional substring filter, e.g. 'Welding'."""
         order = ["LOW", "MEDIUM", "CRITICAL"]
         allowed = order[order.index(min_severity.upper()):] if min_severity.upper() in order else order
-        audits = (
+        q = (
             db.query(SafetyAudit)
             .filter(SafetyAudit.compliance_status == ComplianceStatus.NON_COMPLIANT)
             .filter(SafetyAudit.severity_level.in_([SeverityLevel(s) for s in allowed]))
-            .order_by(SafetyAudit.created_at.desc())
-            .limit(max(1, min(limit, 50)))
-            .all()
         )
-        return [
-            {
-                "at_utc": a.created_at.isoformat(timespec="minutes"),
-                "permit_code": a.work_permit.permit_code if a.work_permit else None,
-                "contractor": a.work_permit.contractor_company if a.work_permit else None,
-                "severity": a.severity_level.value,
-                "stop6": (a.ai_raw_json or {}).get("stop6_category"),
-                "headline": (a.ai_raw_json or {}).get("summary_headline"),
-                "infractions": [o.get("description") for o in (a.ai_raw_json or {}).get("observations", []) if o.get("is_infraction")],
-            }
-            for a in audits
-        ]
+        if location:
+            q = q.filter(SafetyAudit.location.ilike(f"%{location}%"))
+        return [_audit_summary(a) for a in q.order_by(SafetyAudit.created_at.desc()).limit(max(1, min(limit, 50))).all()]
 
     def get_risk_trends(days: int = 30) -> dict:
-        """Analyse violation patterns over the last N days: counts by Toyota STOP 6 category, by contractor, by observation category, and by day."""
+        """Analyse violation patterns over the last N days: counts by fatal-risk category, by location, by policy, by observation type and by day."""
         since = datetime.utcnow() - timedelta(days=max(1, min(days, 365)))
         audits = db.query(SafetyAudit).filter(SafetyAudit.created_at >= since).all()
         bad = [a for a in audits if a.compliance_status == ComplianceStatus.NON_COMPLIANT]
         return {
             "window_days": days,
-            "audits": len(audits),
+            "inspections": len(audits),
             "violations": len(bad),
-            "by_stop6": dict(Counter((a.ai_raw_json or {}).get("stop6_category", "UNKNOWN") for a in bad)),
-            "by_contractor": dict(Counter(a.work_permit.contractor_company for a in bad if a.work_permit)),
-            "by_observation_category": dict(Counter(
+            "by_risk_category": dict(Counter(_risk(a) for a in bad)),
+            "by_location": dict(Counter(a.location or "Unspecified" for a in bad)),
+            "by_policy": dict(Counter(a.template.title for a in bad if a.template)),
+            "by_observation_type": dict(Counter(
                 o.get("category") for a in bad for o in (a.ai_raw_json or {}).get("observations", []) if o.get("is_infraction")
             )),
             "by_day": dict(Counter(a.created_at.date().isoformat() for a in bad)),
         }
 
     def search_company_sops(query: str) -> list:
-        """Search the company's uploaded SOP documents and permit rule templates for passages relevant to the query. Returns the best matching excerpts."""
+        """Search the company's uploaded SOP documents and safety policies for passages relevant to the query. Returns the best matching excerpts."""
         terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 2]
         hits = []
         for t in db.query(PermitTemplate).all():
@@ -131,4 +109,4 @@ def build_copilot_tools(db: Session) -> List[Callable]:
         hits.sort(key=lambda h: h["score"], reverse=True)
         return [{k: v for k, v in h.items() if k != "score"} for h in hits[:5]] or [{"result": "No matching internal SOP found."}]
 
-    return [get_safety_overview, list_work_permits, get_permit_details, get_recent_violations, get_risk_trends, search_company_sops]
+    return [get_safety_overview, list_safety_policies, get_recent_violations, get_risk_trends, search_company_sops]

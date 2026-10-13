@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, endpoints
+from sqlalchemy import text
+
 from app.db.database import Base, SessionLocal, engine
 from app.db.models import Organization
 
@@ -34,6 +36,11 @@ app.include_router(endpoints.router, prefix="/api/v1", tags=["Inspections & Perm
 def init_database():
     """Create tables and load demo data on an empty database (first boot on Cloud Run / Cloud SQL)."""
     Base.metadata.create_all(bind=engine)
+    # Lightweight in-place migration for databases created before audits became policy/location based.
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE safety_audits ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES permit_templates(id)"))
+        conn.execute(text("ALTER TABLE safety_audits ADD COLUMN IF NOT EXISTS location VARCHAR"))
+        conn.execute(text("ALTER TABLE safety_audits ALTER COLUMN work_permit_id DROP NOT NULL"))
     if os.getenv("AUTO_SEED", "true").lower() != "true":
         return
     db = SessionLocal()
@@ -41,7 +48,7 @@ def init_database():
         empty = db.query(Organization).first() is None
     finally:
         db.close()
-    if empty:
+    if empty or os.getenv("FORCE_RESEED", "").lower() == "true":
         from seed import reset_and_seed_db
         reset_and_seed_db()
 

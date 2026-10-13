@@ -22,10 +22,12 @@ class SafetyPerimeterEvaluation(BaseModel):
     barrier_and_apar_status: Literal["SECURE_PERIMETER", "MISSING_BARRIERS", "NOT_APPLICABLE"]
     perimeter_notes: str
 
-Stop6Category = Literal[
-    "STOP_6_1_APPARATUS", "STOP_6_2_HEAVY_OBJECTS", "STOP_6_3_VEHICLES", "STOP_6_4_DROP_FALL",
-    "STOP_6_5_ELECTRIC_SHOCK", "STOP_6_6_HEAT_HAZARDS", "STOP_6_GENERAL",
+# Industry-standard fatal-risk families (aligned with common "life-saving rules" frameworks).
+RiskCategory = Literal[
+    "MACHINERY", "FALLING_OBJECTS", "VEHICLES", "WORKING_AT_HEIGHT",
+    "ELECTRICAL", "FIRE_HEAT_CHEMICAL", "CONFINED_SPACE", "GENERAL",
 ]
+EnforcementAction = Literal["NO_ACTION", "ISSUE_WARNING", "STOP_WORK"]
 
 class GeminiAuditOutput(BaseModel):
     """Exact schema Gemini is constrained to via response_schema (structured output)."""
@@ -33,16 +35,18 @@ class GeminiAuditOutput(BaseModel):
     severity: Literal["NONE", "LOW", "MEDIUM", "CRITICAL"]
     summary_headline: str
     worker_count_detected: int = Field(..., ge=0, description="Number of people visible in the image.")
-    stop6_category: Stop6Category
+    risk_category: RiskCategory
     health_evaluation: HealthEvaluation
     safety_perimeter_evaluation: SafetyPerimeterEvaluation
     observations: List[Observation]
-    enforcement_action: Literal["NO_ACTION", "ISSUE_WARNING", "SUSPEND_PERMIT"]
+    enforcement_action: EnforcementAction
     recommendation: str
 
 class AuditResult(GeminiAuditOutput):
     """Gemini output enriched with server-side facts (model provenance, manifest reconciliation, actions taken)."""
-    stop6_category: Optional[str] = "STOP_6_GENERAL"
+    risk_category: Optional[str] = "GENERAL"
+    location: Optional[str] = None
+    policy_title: Optional[str] = None
     worker_count_detected: Optional[int] = None
     health_evaluation: Optional[dict] = None
     safety_perimeter_evaluation: Optional[dict] = None
@@ -92,10 +96,14 @@ class TemplateResponse(BaseModel):
         from_attributes = True
 
 class DashboardMetrics(BaseModel):
-    active_permits: int
+    total_inspections: int
     compliance_rate: float
     critical_violations: int
-    suspended_permits: List[dict]
+    stop_work_orders: int
+    daily_trend: List[dict]          # [{date, inspections, violations}] for the last 14 days
+    risk_breakdown: List[dict]       # [{risk_category, count}]
+    location_hotspots: List[dict]    # [{location, violations}]
+    recent_incidents: List[dict]
 
 class ChatRequest(BaseModel):
     message: str
@@ -134,8 +142,8 @@ class UserResponse(BaseModel):
 
 class AuditHistoryItem(BaseModel):
     id: str
-    permit_code: str
-    contractor_company: str
+    location: Optional[str]
+    policy_title: Optional[str]
     inspector_id: str
     photo_url: Optional[str]
     compliance_status: str

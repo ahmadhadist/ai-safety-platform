@@ -52,13 +52,13 @@ def reset_and_seed_db():
         "required_ppe": ["Flame_Resistant_Clothing", "Welding_Helmet", "Leather_Gloves"],
         "environmental_prerequisites": ["Fire_Extinguisher_Present", "Combustibles_Cleared_10m"],
         "forbidden_hazards": ["Unattended_Torch", "Missing_Fire_Watcher"],
-        "severity_action": {"CRITICAL": "SUSPEND_PERMIT", "MEDIUM": "ISSUE_WARNING"}
+        "severity_action": {"CRITICAL": "STOP_WORK", "MEDIUM": "ISSUE_WARNING"}
     }
     wah_rules = {
         "required_ppe": ["Full_Body_Harness", "Hard_Hat_With_Chin_Strap"],
         "environmental_prerequisites": ["Double_Lanyard_Attached"],
         "forbidden_hazards": ["Unanchored_Lanyard"],
-        "severity_action": {"CRITICAL": "SUSPEND_PERMIT", "MEDIUM": "ISSUE_WARNING"}
+        "severity_action": {"CRITICAL": "STOP_WORK", "MEDIUM": "ISSUE_WARNING"}
     }
     template_hw = PermitTemplate(org_id=org.id, permit_type=PermitType.HOT_WORK, title="Standard Hot Work", dynamic_rules=hot_work_rules)
     template_wah = PermitTemplate(org_id=org.id, permit_type=PermitType.WORKING_AT_HEIGHT, title="Working at Height", dynamic_rules=wah_rules)
@@ -93,40 +93,37 @@ def reset_and_seed_db():
     db.add_all([permit_1, permit_2, permit_int])
     db.commit()
 
-    # 6. Safety Audits
-    audit_1 = SafetyAudit(
-        work_permit_id=permit_2.id, inspector_id=str(inspector_user.id),
-        photo_url="https://storage.googleapis.com/ehs-demo/audit_photos/tx-001.jpg",
-        ai_raw_json={"status": "NON_COMPLIANT", "severity": "CRITICAL", "summary_headline": "Worker identified without safety harness attachment.", "observations": [{"category": "UNSAFE_ACTION", "description": "Lanyard not attached.", "is_infraction": True, "confidence": 0.98}], "enforcement_action": "SUSPEND_PERMIT", "recommendation": "Immediately halt work"},
-        compliance_status=ComplianceStatus.NON_COMPLIANT, severity_level=SeverityLevel.CRITICAL, auto_action_taken=True
-    )
-    db.add(audit_1)
-    db.commit()
-
+    
     # 7. Two weeks of AI audit history so dashboards and the Co-Pilot's trend tools have something to analyse.
+    T = templates_by_title
     history = [
-        (13, permit_1, "NON_COMPLIANT", "MEDIUM", "STOP_6_6_HEAT_HAZARDS", "FIRE_HAZARD", "Combustible cardboard within 10m of welding sparks."),
-        (12, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
-        (11, permit_2, "NON_COMPLIANT", "CRITICAL", "STOP_6_4_DROP_FALL", "PPE", "Worker at 6m height without full body harness."),
-        (10, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
-        (9, permit_2, "NON_COMPLIANT", "MEDIUM", "STOP_6_4_DROP_FALL", "UNSAFE_CONDITION", "Scaffold missing toe board on upper deck."),
-        (7, permit_1, "NON_COMPLIANT", "LOW", "STOP_6_6_HEAT_HAZARDS", "PPE", "Fire watcher not wearing safety glasses."),
-        (6, permit_2, "COMPLIANT", "NONE", "STOP_6_4_DROP_FALL", None, None),
-        (5, permit_1, "NON_COMPLIANT", "CRITICAL", "STOP_6_6_HEAT_HAZARDS", "FIRE_HAZARD", "No fire extinguisher (APAR) within reach of hot work."),
-        (4, permit_2, "NON_COMPLIANT", "MEDIUM", "STOP_6_4_DROP_FALL", "PPE", "Hard hat chin strap not fastened at height."),
-        (3, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
-        (2, permit_2, "NON_COMPLIANT", "CRITICAL", "STOP_6_4_DROP_FALL", "UNSAFE_ACTION", "Lanyard unhooked while moving between scaffold bays."),
-        (1, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
+        (13, "Welding Bay A", T["Standard Hot Work"], "NON_COMPLIANT", "MEDIUM", "FIRE_HEAT_CHEMICAL", "FIRE_HAZARD", "Combustible cardboard stored within 10 m of welding sparks."),
+        (12, "Welding Bay A", T["Standard Hot Work"], "COMPLIANT", "NONE", "FIRE_HEAT_CHEMICAL", None, None),
+        (11, "Scaffold Zone - Unit 4", T["Working at Height (WAH)"], "NON_COMPLIANT", "CRITICAL", "WORKING_AT_HEIGHT", "PPE", "Worker at 6 m height without a full body harness."),
+        (10, "Assembly Line 1", T["General Factory Floor"], "COMPLIANT", "NONE", "GENERAL", None, None),
+        (9, "Scaffold Zone - Unit 4", T["Working at Height (WAH)"], "NON_COMPLIANT", "MEDIUM", "WORKING_AT_HEIGHT", "UNSAFE_CONDITION", "Scaffold platform missing toe board on upper deck."),
+        (8, "Warehouse Dock 2", T["General Factory Floor"], "NON_COMPLIANT", "MEDIUM", "VEHICLES", "UNSAFE_ACTION", "Pedestrian walking inside marked forklift lane."),
+        (7, "Welding Bay A", T["Standard Hot Work"], "NON_COMPLIANT", "LOW", "FIRE_HEAT_CHEMICAL", "PPE", "Fire watcher not wearing safety glasses."),
+        (6, "Substation B", T["Electrical Work & LOTO"], "COMPLIANT", "NONE", "ELECTRICAL", None, None),
+        (5, "Welding Bay A", T["Standard Hot Work"], "NON_COMPLIANT", "CRITICAL", "FIRE_HEAT_CHEMICAL", "FIRE_HAZARD", "No fire extinguisher within reach of active hot work."),
+        (4, "Scaffold Zone - Unit 4", T["Working at Height (WAH)"], "NON_COMPLIANT", "MEDIUM", "WORKING_AT_HEIGHT", "PPE", "Hard hat chin strap not fastened at height."),
+        (4, "Assembly Line 1", T["General Factory Floor"], "NON_COMPLIANT", "LOW", "MACHINERY", "ERGONOMICS", "Operator bending >30 degrees to lift parts from floor bin."),
+        (3, "Tank Farm - T3", T["Confined Space Entry"], "COMPLIANT", "NONE", "CONFINED_SPACE", None, None),
+        (2, "Scaffold Zone - Unit 4", T["Working at Height (WAH)"], "NON_COMPLIANT", "CRITICAL", "WORKING_AT_HEIGHT", "UNSAFE_ACTION", "Lanyard unhooked while moving between scaffold bays."),
+        (1, "Warehouse Dock 2", T["General Factory Floor"], "COMPLIANT", "NONE", "VEHICLES", None, None),
+        (1, "Assembly Line 1", T["General Factory Floor"], "COMPLIANT", "NONE", "GENERAL", None, None),
+        (0, "Substation B", T["Electrical Work & LOTO"], "NON_COMPLIANT", "MEDIUM", "ELECTRICAL", "UNSAFE_CONDITION", "Electrical panel door left open without lockout tag."),
     ]
-    for days_ago, permit, status, severity, stop6, category, finding in history:
+    for days_ago, location, policy, status, severity, risk, category, finding in history:
         bad = status == "NON_COMPLIANT"
-        action = "SUSPEND_PERMIT" if severity == "CRITICAL" else ("ISSUE_WARNING" if bad else "NO_ACTION")
+        action = "STOP_WORK" if severity == "CRITICAL" else ("ISSUE_WARNING" if bad else "NO_ACTION")
         db.add(SafetyAudit(
-            work_permit_id=permit.id, inspector_id=str(inspector_user.id), photo_url=None,
+            template_id=policy.id, location=location, inspector_id=str(inspector_user.id), photo_url=None,
             compliance_status=ComplianceStatus(status), severity_level=SeverityLevel(severity), auto_action_taken=bad,
-            created_at=now - timedelta(days=days_ago, hours=days_ago % 5),
+            created_at=now - timedelta(days=days_ago, hours=(days_ago * 7) % 9 + 1),
             ai_raw_json={
-                "status": status, "severity": severity, "stop6_category": stop6, "enforcement_action": action,
+                "status": status, "severity": severity, "risk_category": risk, "enforcement_action": action,
+                "location": location, "policy_title": policy.title,
                 "summary_headline": finding or "All required PPE and controls in place.",
                 "observations": [{"category": category, "description": finding, "is_infraction": True, "confidence": 0.93}] if bad else [],
                 "recommendation": "Stop work and correct the finding before resuming." if bad else "Continue work.",

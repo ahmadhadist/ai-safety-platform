@@ -77,21 +77,20 @@ export default function CopilotPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "ai",
-      content: "Halo! Saya adalah **EHS AI Co-Pilot** Anda. Saya terhubung langsung dengan **Database Perizinan Kerja, Standar ISO/SOP, dan Riwayat Pelanggaran K3** pabrik secara *real-time*.\n\nAda yang bisa saya bantu analisis atau pandu hari ini?"
+      content: "Hi! I'm your **EHS AI Co-Pilot**. I query your **live inspection history, safety policies and uploaded SOPs** before I answer, and I show you which data I used.\n\nAsk me about hotspots, trends, a policy, or an emergency procedure."
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [language, setLanguage] = useState("id");
+  const [language, setLanguage] = useState("en");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
-    "🛠️ PPE Standards for Working at Height (WAH)",
-    "🚨 Check suspended work permits today",
-    "🧪 Emergency procedure for ammonia chemical spill",
-    "📋 Daily PPE rules for internal Toyota assembly line",
-    "📈 Which contractor is our biggest risk in the last 14 days?"
+    "📈 Which location is our biggest risk in the last 14 days?",
+    "🚨 Summarise this week's critical violations",
+    "🛠️ What PPE does our Working at Height policy require?",
+    "🧪 Emergency procedure for an ammonia leak"
   ];
 
   useEffect(() => {
@@ -142,16 +141,16 @@ export default function CopilotPage() {
             <span className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl shadow-sm">
               <Bot size={22} />
             </span>
-            EHS Enterprise AI Co-Pilot
+            EHS AI Co-Pilot
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Smart EHS Q&A powered by <b>Real-Time RAG</b> (Connected directly to Work Permits, ISO 45001, & Uploaded SOPs).
+            An agent that queries your <b>live inspection data, policies and SOPs</b> with Gemini function calling.
           </p>
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 text-xs font-medium shadow-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <span>Gemini 3.6 Flash Active</span>
+          <span>Gemini · Function Calling</span>
         </div>
       </div>
 
@@ -266,7 +265,7 @@ export default function CopilotPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about SOPs, work permit numbers, or emergency steps..."
+              placeholder="Ask about hotspots, trends, policies or emergency steps..."
               className="flex-1 bg-slate-100/90 border border-slate-200/80 outline-none rounded-xl px-5 py-3 text-slate-800 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
               disabled={isLoading}
             />
@@ -280,7 +279,7 @@ export default function CopilotPage() {
           </div>
           <div className="mt-2 text-center text-[11px] text-slate-400 flex justify-center items-center gap-1.5">
             <ShieldCheck size={13} className="text-emerald-500" /> 
-            Answers are based on real-time factory permit data & international safety standards (Zero-Hallucination).
+            Site-specific answers come from live database tools; general guidance follows OSHA / ISO 45001 practice.
           </div>
         </div>
       </div>
