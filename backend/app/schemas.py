@@ -31,6 +31,8 @@ EnforcementAction = Literal["NO_ACTION", "ISSUE_WARNING", "STOP_WORK"]
 
 class GeminiAuditOutput(BaseModel):
     """Exact schema Gemini is constrained to via response_schema (structured output)."""
+    detected_activity: str = Field(..., description="Short description of the work activity visible, e.g. 'Angle grinding near gas cylinders'.")
+    applied_policy: str = Field(..., description="Title of the safety policy applied (exactly as given).")
     status: Literal["COMPLIANT", "NON_COMPLIANT"]
     severity: Literal["NONE", "LOW", "MEDIUM", "CRITICAL"]
     summary_headline: str
@@ -41,12 +43,19 @@ class GeminiAuditOutput(BaseModel):
     observations: List[Observation]
     enforcement_action: EnforcementAction
     recommendation: str
+    faces_2d: List[List[int]] = Field(
+        default_factory=list,
+        description="Bounding box [ymin, xmin, ymax, xmax] (0-1000) of EVERY visible human face, used to blur faces for privacy.",
+    )
 
 class AuditResult(GeminiAuditOutput):
     """Gemini output enriched with server-side facts (model provenance, manifest reconciliation, actions taken)."""
     risk_category: Optional[str] = "GENERAL"
     location: Optional[str] = None
     policy_title: Optional[str] = None
+    policy_auto_detected: bool = False
+    faces_blurred: int = 0
+    audit_id: Optional[str] = None
     worker_count_detected: Optional[int] = None
     health_evaluation: Optional[dict] = None
     safety_perimeter_evaluation: Optional[dict] = None
@@ -108,6 +117,52 @@ class DashboardMetrics(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     language: Optional[str] = "id"
+
+class VideoEvent(BaseModel):
+    start_seconds: float = Field(..., ge=0)
+    end_seconds: float = Field(..., ge=0)
+    category: Literal["PPE", "UNSAFE_ACTION", "UNSAFE_CONDITION", "FIRE_HAZARD", "HEALTH_HAZARD", "ERGONOMICS"]
+    severity: Literal["LOW", "MEDIUM", "CRITICAL"]
+    description: str
+
+class GeminiVideoOutput(BaseModel):
+    detected_activity: str
+    applied_policy: str
+    status: Literal["COMPLIANT", "NON_COMPLIANT"]
+    severity: Literal["NONE", "LOW", "MEDIUM", "CRITICAL"]
+    summary_headline: str
+    risk_category: RiskCategory
+    max_workers_visible: int = Field(..., ge=0)
+    events: List[VideoEvent] = Field(..., description="Every distinct safety violation, with when it starts and ends in the clip.")
+    enforcement_action: EnforcementAction
+    recommendation: str
+
+class VideoAuditResult(GeminiVideoOutput):
+    location: Optional[str] = None
+    policy_title: Optional[str] = None
+    policy_auto_detected: bool = False
+    video_url: Optional[str] = None
+    model_used: Optional[str] = None
+    latency_ms: Optional[int] = None
+    alerts_dispatched: List[str] = []
+    audit_id: Optional[str] = None
+
+class CorrectiveActionItem(BaseModel):
+    action: str
+    owner_role: str = Field(..., description="Role responsible, e.g. 'Area Supervisor'.")
+    due_in_days: int = Field(..., ge=0)
+    control_type: Literal["ELIMINATION", "SUBSTITUTION", "ENGINEERING", "ADMINISTRATIVE", "PPE"]
+
+class IncidentReport(BaseModel):
+    title: str
+    incident_summary: str
+    immediate_actions_taken: List[str]
+    five_whys: List[str] = Field(..., description="Exactly five successive 'Why?' answers leading to the root cause.")
+    root_cause: str
+    contributing_factors: List[str]
+    corrective_actions: List[CorrectiveActionItem]
+    lessons_learned: str
+    regulatory_references: List[str] = Field(..., description="Relevant standards, e.g. 'OSHA 1926.501', 'ISO 45001 clause 8.1.2'.")
 
 class ToolCallTrace(BaseModel):
     name: str

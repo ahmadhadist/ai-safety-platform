@@ -1,6 +1,7 @@
 import copy
 import io
 import math
+import mimetypes
 import re
 from collections import Counter
 from datetime import datetime, timedelta
@@ -18,9 +19,10 @@ from app.db.models import (
     ComplianceStatus, PermitStatus, PermitTemplate, PermitType, Plant, SafetyAudit, SeverityLevel, User, WorkPermit,
 )
 from app.schemas import (
-    AuditHistoryPaginated, AuditResult, ChatRequest, ChatResponse, DashboardMetrics, Observation, PermitCreate,
-    PermitResponse, TemplateCreate, TemplateResponse, UserCreate, UserResponse, VoiceReportResult,
+    AuditHistoryPaginated, AuditResult, ChatRequest, ChatResponse, DashboardMetrics, IncidentReport, Observation, PermitCreate,
+    PermitResponse, TemplateCreate, TemplateResponse, UserCreate, UserResponse, VideoAuditResult, VoiceReportResult,
 )
+from app.services.privacy import blur_faces
 from app.services.copilot_tools import build_copilot_tools
 from app.services.gemini_service import AIUnavailableError, GeminiAuditService
 from app.services.notification_service import NotificationService
@@ -233,11 +235,63 @@ def _reconcile_headcount(result: AuditResult, manifest: list) -> None:
         result.enforcement_action = "ISSUE_WARNING"
 
 
+AUTO_POLICY = "auto"
+MAX_VIDEO_BYTES = 25 * 1024 * 1024
+
+
+def _policy_context(db: Session, policy_id: Optional[str], location: str):
+    """Return (policy or None when auto-detecting, rules_context for Gemini)."""
+    if policy_id and policy_id != AUTO_POLICY:
+        policy = db.query(PermitTemplate).filter(PermitTemplate.id == policy_id).first()
+        if not policy:
+            raise HTTPException(status_code=404, detail="Safety policy not found")
+        rules = copy.deepcopy(policy.dynamic_rules or {})  # never mutate the policy's JSONB in the session
+        rules.pop("extracted_text", None)
+        rules["safety_policy"] = policy.title
+        rules["inspection_context"] = {"category": policy.permit_type.value, "location": location}
+        return policy, rules
+    policies = db.query(PermitTemplate).all()
+    return None, {
+        "inspection_context": {"location": location},
+        "available_policies": [
+            {
+                "title": t.title,
+                "category": t.permit_type.value,
+                **{k: v for k, v in (t.dynamic_rules or {}).items() if k in ("required_ppe", "environmental_prerequisites", "forbidden_hazards", "max_temperature_c", "min_lux")},
+            }
+            for t in policies
+        ],
+    }
+
+
+def _match_policy(db: Session, applied_title: str) -> Optional[PermitTemplate]:
+    policies = db.query(PermitTemplate).all()
+    title = (applied_title or "").strip().lower()
+    return (
+        next((t for t in policies if t.title.lower() == title), None)
+        or next((t for t in policies if title and (title in t.title.lower() or t.title.lower() in title)), None)
+        or next((t for t in policies if t.permit_type == PermitType.GENERAL), None)
+    )
+
+
+def _normalize_enforcement(result) -> None:
+    """Deterministic policy on top of the model: any violation gets at least a warning, CRITICAL always stops work."""
+    if result.status == "NON_COMPLIANT" and result.enforcement_action == "NO_ACTION":
+        result.enforcement_action = "ISSUE_WARNING"
+    if result.severity == "CRITICAL":
+        result.status = "NON_COMPLIANT"
+        result.enforcement_action = "STOP_WORK"
+
+
+def _evidence_key(location: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "-", location).strip("-") or "area"
+
+
 @router.post("/inspections/audit", response_model=AuditResult)
 async def process_inspection_audit(
     background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
-    policy_id: Optional[str] = Form(None),
+    policy_id: Optional[str] = Form(AUTO_POLICY),
     location: Optional[str] = Form(None),
     permit_id: Optional[str] = Form(None),
     sensor_temperature_c: float = Form(None),
@@ -245,19 +299,12 @@ async def process_inspection_audit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Inspect a photo against a safety policy at a location. A work permit is optional (post-hackathon workflow)."""
+    """Inspect a photo against a safety policy (or let Gemini pick one) at a location. Work permits are optional."""
     permit = db.query(WorkPermit).filter(WorkPermit.id == permit_id).first() if permit_id else None
     if permit_id and not permit:
         raise HTTPException(status_code=404, detail="Work permit not found")
-    policy = permit.template if permit else db.query(PermitTemplate).filter(PermitTemplate.id == policy_id).first() if policy_id else None
-    if not policy:
-        raise HTTPException(status_code=400, detail="Select a safety policy")
     location = (location or (permit.location_zone if permit else "") or "Unspecified area").strip()[:120]
-
-    # Deep-copy: never mutate the policy's JSONB in the session.
-    rules_context = copy.deepcopy(policy.dynamic_rules or {})
-    rules_context.pop("extracted_text", None)
-    rules_context["inspection_context"] = {"policy": policy.title, "category": policy.permit_type.value, "location": location}
+    policy, rules_context = _policy_context(db, str(permit.template_id) if permit else policy_id, location)
     if sensor_temperature_c is not None or sensor_humidity_pct is not None:
         rules_context["sensor_data_fusion"] = {"temperature_c": sensor_temperature_c, "humidity_pct": sensor_humidity_pct}
 
@@ -271,25 +318,28 @@ async def process_inspection_audit(
         # Never fabricate a verdict for a safety decision: fail loudly and record nothing.
         raise HTTPException(status_code=503, detail=f"AI inspector unavailable, no verdict recorded. {e}")
 
+    if policy is None:
+        policy = _match_policy(db, result.applied_policy)
+        result.policy_auto_detected = True
     result.location = location
-    result.policy_title = policy.title
+    result.policy_title = policy.title if policy else result.applied_policy
     if permit:
         _reconcile_headcount(result, permit.worker_manifest or [])
-    if result.status == "NON_COMPLIANT" and result.enforcement_action == "NO_ACTION":
-        result.enforcement_action = "ISSUE_WARNING"
+    _normalize_enforcement(result)
     if permit and result.enforcement_action == "STOP_WORK":
         permit.status = PermitStatus.SUSPENDED
 
-    # 2. Smart tiered retention: violations are kept as legal evidence, compliant photos are purged (privacy by design).
-    evidence_key = (permit.permit_code if permit else re.sub(r"[^A-Za-z0-9]+", "-", location).strip("-") or "area")
+    # 2. Smart tiered retention: violations are kept as evidence (faces blurred), compliant photos are purged.
+    evidence_bytes = image_bytes
     if result.status == "NON_COMPLIANT":
+        evidence_bytes, result.faces_blurred = await run_in_threadpool(blur_faces, image_bytes, result.faces_2d, mime_type)
         result.photo_url = storage_service.upload_violation_evidence(
-            image_bytes=image_bytes, mime_type=mime_type, permit_code=evidence_key, severity=result.severity
+            image_bytes=evidence_bytes, mime_type=mime_type, permit_code=permit.permit_code if permit else _evidence_key(location), severity=result.severity
         )
-        result.data_retention_policy = "PERMANENT_LEGAL_EVIDENCE (" + ("GCS" if storage_service.enabled else "LOCAL") + ")"
+        result.data_retention_policy = "EVIDENCE KEPT · FACES BLURRED (" + ("GCS" if storage_service.enabled else "LOCAL") + ")"
     else:
         storage_service.purge_compliant_photo()
-        result.data_retention_policy = "AUTO_PURGED (Zero-Storage / Privacy Preserved)"
+        result.data_retention_policy = "AUTO-PURGED (privacy preserved)"
 
     # 3. Real-time escalation for every violation, sent in the background.
     if result.status == "NON_COMPLIANT":
@@ -297,22 +347,111 @@ async def process_inspection_audit(
         violations = "\n".join(f"- {o.description}" for o in result.observations if o.is_infraction) or result.summary_headline
         background_tasks.add_task(
             notification_service.dispatch_violation_alerts,
-            location, result.severity, result.enforcement_action, violations, result.photo_url, image_bytes,
+            location, result.severity, result.enforcement_action, violations, result.photo_url, evidence_bytes,
         )
 
-    db.add(SafetyAudit(
+    audit = SafetyAudit(
         work_permit_id=permit.id if permit else None,
-        template_id=policy.id,
+        template_id=policy.id if policy else None,
         location=location,
         inspector_id=str(current_user.id),
         photo_url=result.photo_url,
-        ai_raw_json=result.model_dump(),
         compliance_status=ComplianceStatus(result.status),
         severity_level=SeverityLevel(result.severity),
         auto_action_taken=result.enforcement_action != "NO_ACTION",
-    ))
+    )
+    db.add(audit)
+    db.flush()
+    result.audit_id = str(audit.id)
+    audit.ai_raw_json = {**result.model_dump(exclude={"faces_2d"}), "media_type": "image"}
     db.commit()
     return result
+
+
+@router.post("/inspections/video", response_model=VideoAuditResult)
+async def process_video_audit(
+    background_tasks: BackgroundTasks,
+    video: UploadFile = File(...),
+    policy_id: Optional[str] = Form(AUTO_POLICY),
+    location: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CCTV clip review: Gemini watches the video and returns a timestamped violation timeline."""
+    video_bytes = await video.read()
+    if len(video_bytes) > MAX_VIDEO_BYTES:
+        raise HTTPException(status_code=413, detail="Clip too large: keep it under 25 MB (about 30-60 s of 720p).")
+    mime_type = video.content_type or ""
+    if not mime_type.startswith("video/"):
+        mime_type = mimetypes.guess_type(video.filename or "")[0] or ""
+    if not mime_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Upload a video file (MP4, WebM or MOV)")
+    location = (location or "Unspecified area").strip()[:120]
+    policy, rules_context = _policy_context(db, policy_id, location)
+
+    try:
+        result = await run_in_threadpool(gemini_service.analyze_video, video_bytes, mime_type, rules_context)
+    except AIUnavailableError as e:
+        raise HTTPException(status_code=503, detail=f"AI inspector unavailable, no verdict recorded. {e}")
+
+    if policy is None:
+        policy = _match_policy(db, result.applied_policy)
+        result.policy_auto_detected = True
+    result.location = location
+    result.policy_title = policy.title if policy else result.applied_policy
+    _normalize_enforcement(result)
+
+    retention = "AUTO-PURGED (privacy preserved)"
+    if result.status == "NON_COMPLIANT":
+        result.video_url = storage_service.upload_violation_evidence(
+            image_bytes=video_bytes, mime_type=mime_type, permit_code=_evidence_key(location), severity=result.severity
+        )
+        retention = "VIDEO EVIDENCE KEPT (" + ("GCS" if storage_service.enabled else "LOCAL") + ")"
+        result.alerts_dispatched = notification_service.configured_channels()
+        timeline = "\n".join(f"- [{int(e.start_seconds // 60):02d}:{int(e.start_seconds % 60):02d}] {e.description}" for e in result.events) or result.summary_headline
+        background_tasks.add_task(
+            notification_service.dispatch_violation_alerts,
+            location, result.severity, result.enforcement_action, timeline, result.video_url, None,
+        )
+
+    audit = SafetyAudit(
+        template_id=policy.id if policy else None,
+        location=location,
+        inspector_id=str(current_user.id),
+        photo_url=result.video_url,
+        compliance_status=ComplianceStatus(result.status),
+        severity_level=SeverityLevel(result.severity),
+        auto_action_taken=result.enforcement_action != "NO_ACTION",
+    )
+    db.add(audit)
+    db.flush()
+    result.audit_id = str(audit.id)
+    audit.ai_raw_json = {**result.model_dump(), "media_type": "video", "data_retention_policy": retention, "observations": [
+        {"category": e.category, "description": f"[{int(e.start_seconds // 60):02d}:{int(e.start_seconds % 60):02d}] {e.description}", "is_infraction": True, "confidence": 0.9}
+        for e in result.events
+    ]}
+    db.commit()
+    return result
+
+
+@router.post("/inspections/{audit_id}/report", response_model=IncidentReport)
+def incident_report(audit_id: str, regenerate: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """One-click incident investigation report (5 Whys + hierarchy of controls), cached on the audit."""
+    audit = db.query(SafetyAudit).filter(SafetyAudit.id == audit_id).first()
+    if not audit:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    raw = audit.ai_raw_json or {}
+    if raw.get("incident_report") and not regenerate:
+        return raw["incident_report"]
+    if audit.compliance_status == ComplianceStatus.COMPLIANT:
+        raise HTTPException(status_code=400, detail="No violation to report on this inspection")
+    try:
+        report = gemini_service.generate_incident_report(raw, audit.location or "Unspecified area", audit.template.title if audit.template else "General")
+    except AIUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    audit.ai_raw_json = {**raw, "incident_report": report.model_dump()}  # reassign so SQLAlchemy persists the JSONB change
+    db.commit()
+    return report
 
 
 @router.get("/inspections/history", response_model=AuditHistoryPaginated)

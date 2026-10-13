@@ -2,7 +2,7 @@ import "./globals.css";
 import SidebarLayout from "@/components/SidebarLayout";
 
 export const metadata = {
-  title: "Global EHS Dashboard",
+  title: "SafeSight · AI Safety Inspector",
   description: "AI-Powered Safety Permitting",
 };
 

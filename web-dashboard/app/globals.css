@@ -16,7 +16,7 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.fade-in { animation: fade-in 0.35s ease-out both; }
+.fade-in { animation: fade-in 0.35s ease-out backwards; } /* no fill-forwards: a lingering transform would trap position:fixed modals */
 
 @keyframes scan {
   0% { top: 0%; }
@@ -26,4 +26,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .fade-in, .scan-line { animation: none; }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #incident-report, #incident-report * { visibility: visible; }
+  #incident-report { position: absolute; left: 0; top: 0; width: 100%; }
 }

@@ -7,14 +7,24 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-from app.schemas import AuditResult, GeminiAuditOutput, VoiceReportResult
+from app.schemas import AuditResult, GeminiAuditOutput, GeminiVideoOutput, IncidentReport, VideoAuditResult, VoiceReportResult
 
 # Ordered fallback chain. The first model that answers wins; 429/503 "high demand" errors fall through to the next one.
 DEFAULT_MODELS = "gemini-3.6-flash,gemini-3.8-flash,gemini-3.5-flash,gemini-flash-latest,gemini-3.5-flash-lite,gemini-3.1-flash-lite"
+VERTEX_MODELS = "gemini-3.6-flash,gemini-3.8-flash,gemini-3.5-flash,gemini-2.5-flash"
 RETRY_ROUNDS = int(os.environ.get("GEMINI_RETRY_ROUNDS", "2"))
 QUOTA_COOLDOWN_S = 15 * 60
 # Fail fast per model (no SDK-internal retries); our own model chain is the retry strategy.
 HTTP_OPTIONS = types.HttpOptions(timeout=45_000, retry_options=types.HttpRetryOptions(attempts=1))
+
+
+POLICY_SELECTION_RULES = """
+        POLICY SELECTION:
+        - If "available_policies" is present, first identify the work activity in "detected_activity", then choose the
+          single most relevant policy from that list, set "applied_policy" to its exact title and evaluate against it.
+          If none fits, use the most general policy.
+        - Otherwise set "applied_policy" to the title in "safety_policy".
+"""
 
 
 class AIUnavailableError(RuntimeError):
@@ -36,8 +46,9 @@ class CompiledSopRules(BaseModel):
 
 class GeminiAuditService:
     def __init__(self):
-        self.models = [m.strip() for m in os.environ.get("GEMINI_MODELS", DEFAULT_MODELS).split(",") if m.strip()]
         use_vertex = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes")
+        default_chain = VERTEX_MODELS if use_vertex else DEFAULT_MODELS
+        self.models = [m.strip() for m in os.environ.get("GEMINI_MODELS", default_chain).split(",") if m.strip()]
         api_key = os.environ.get("GEMINI_API_KEY", "")
         self.available = use_vertex or (bool(api_key) and "your_" not in api_key and "masukkan" not in api_key)
         if use_vertex:
@@ -88,6 +99,8 @@ class GeminiAuditService:
 
         SAFETY POLICY & CONTEXT (JSON):
         {json.dumps(rules_context, indent=2)}
+{POLICY_SELECTION_RULES}
+        PRIVACY: put the bounding box of EVERY visible human face in "faces_2d" (they will be blurred before storage).
 
         Identify missing required PPE, unsafe acts, unsafe conditions, forbidden hazards and industrial-hygiene risks.
 
@@ -133,6 +146,52 @@ class GeminiAuditService:
         result.model_used = model_name
         result.latency_ms = latency_ms
         return result
+
+    # ------------------------------------------------------------------ CCTV video audit
+    def analyze_video(self, video_bytes: bytes, mime_type: str, rules_context: dict) -> VideoAuditResult:
+        """Gemini watches the clip natively (frames + time) and returns a timestamped violation timeline."""
+        prompt = f"""
+        You are reviewing a workplace CCTV clip for safety compliance.
+
+        SAFETY POLICY & CONTEXT (JSON):
+        {json.dumps(rules_context, indent=2)}
+{POLICY_SELECTION_RULES}
+        For EVERY distinct violation, add an event with start_seconds / end_seconds measured from the start of the clip,
+        a category, a severity and a one-sentence description of who does what. Merge continuous occurrences into one event.
+        Only report what is visible. Then give an overall verdict, risk_category (MACHINERY, FALLING_OBJECTS, VEHICLES,
+        WORKING_AT_HEIGHT, ELECTRICAL, FIRE_HEAT_CHEMICAL, CONFINED_SPACE, GENERAL) and enforcement_action
+        (STOP_WORK for imminent danger, ISSUE_WARNING for other violations, NO_ACTION if compliant). Write in English.
+        """
+        response, model_name, latency_ms = self._generate(
+            contents=[types.Part.from_bytes(data=video_bytes, mime_type=mime_type), prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", response_schema=GeminiVideoOutput, temperature=0.1
+            ),
+        )
+        parsed = response.parsed or GeminiVideoOutput.model_validate_json(response.text)
+        result = VideoAuditResult.model_validate(parsed.model_dump())
+        result.events.sort(key=lambda e: e.start_seconds)
+        result.model_used = model_name
+        result.latency_ms = latency_ms
+        return result
+
+    # ------------------------------------------------------------------ Incident report
+    def generate_incident_report(self, audit: dict, location: str, policy_title: str) -> IncidentReport:
+        prompt = f"""
+        You are a senior EHS incident investigator. Write a formal incident investigation report for this AI-detected
+        safety violation, suitable for a plant manager. Use a 5-Whys root-cause analysis and the hierarchy of controls
+        (prefer elimination/engineering over PPE). Be specific to the findings; do not invent injuries or names.
+
+        LOCATION: {location}
+        POLICY: {policy_title}
+        AI FINDINGS (JSON):
+        {json.dumps({k: audit.get(k) for k in ("summary_headline", "severity", "risk_category", "enforcement_action", "observations", "events", "recommendation", "detected_activity")}, indent=2, default=str)}
+        """
+        response, _, _ = self._generate(
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=IncidentReport, temperature=0.2),
+        )
+        return response.parsed or IncidentReport.model_validate_json(response.text)
 
     # ------------------------------------------------------------------ Agentic Co-Pilot
     def run_copilot_agent(self, user_message: str, tools: List[Callable], language: str = "id") -> dict:

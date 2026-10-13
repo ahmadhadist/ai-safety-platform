@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Free-tier deployment of the EHS Safety Platform to Google Cloud.
 #
-#   Cloud Run (API + Web, scale-to-zero)  ·  Gemini API key (free tier) in Secret Manager
+#   Cloud Run (API + Web, scale-to-zero)  ·  Gemini on Vertex AI (service-account auth, billed to the project)
 #   Postgres 15 on an Always-Free e2-micro VM, reachable only over the VPC (Direct VPC egress)
 #   Cloud Storage (private violation evidence)
 #
 # Usage:  PROJECT_ID=my-project ./deploy/deploy-cloudrun.sh
-# Reads GEMINI_API_KEY and optional TELEGRAM_* / FONNTE_TOKEN / WA_TARGET_PHONE from backend/.env.
+# Reads optional TELEGRAM_* / FONNTE_TOKEN / WA_TARGET_PHONE from backend/.env.
+# Set USE_VERTEX=false to use a Gemini API key (GEMINI_API_KEY from backend/.env) instead of Vertex AI.
 # Re-running is safe: existing resources are reused and services are redeployed.
 set -euo pipefail
 
@@ -29,7 +30,7 @@ gcloud config set project "$PROJECT_ID" >/dev/null
 
 echo "==> Enabling APIs"
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
-  compute.googleapis.com secretmanager.googleapis.com storage.googleapis.com
+  compute.googleapis.com secretmanager.googleapis.com storage.googleapis.com aiplatform.googleapis.com
 
 echo "==> Build permissions (new projects run Cloud Build as the default compute service account)"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format 'value(projectNumber)')"
@@ -39,8 +40,9 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${
 echo "==> Service account for the API"
 gcloud iam service-accounts describe "$SA_EMAIL" >/dev/null 2>&1 || \
   gcloud iam service-accounts create "$SA_NAME" --display-name "EHS API runtime"
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:$SA_EMAIL" \
-  --role roles/secretmanager.secretAccessor --condition=None >/dev/null
+for role in roles/secretmanager.secretAccessor roles/aiplatform.user; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:$SA_EMAIL" --role "$role" --condition=None >/dev/null
+done
 
 echo "==> Private evidence bucket"
 gcloud storage buckets describe "gs://$BUCKET" >/dev/null 2>&1 || \
@@ -55,9 +57,12 @@ put_secret() {  # put_secret NAME VALUE  (adds a new version only when the value
     printf '%s' "$2" | gcloud secrets create "$1" --data-file=- --replication-policy=automatic >/dev/null
   fi
 }
-GEMINI_API_KEY="${GEMINI_API_KEY:-$(envval GEMINI_API_KEY)}"
-[ -n "$GEMINI_API_KEY" ] || { echo "GEMINI_API_KEY missing (backend/.env)"; exit 1; }
-put_secret ehs-gemini-api-key "$GEMINI_API_KEY"
+USE_VERTEX="${USE_VERTEX:-true}"
+if [ "$USE_VERTEX" != "true" ]; then
+  GEMINI_API_KEY="${GEMINI_API_KEY:-$(envval GEMINI_API_KEY)}"
+  [ -n "$GEMINI_API_KEY" ] || { echo "GEMINI_API_KEY missing (backend/.env)"; exit 1; }
+  put_secret ehs-gemini-api-key "$GEMINI_API_KEY"
+fi
 gcloud secrets describe ehs-jwt-secret >/dev/null 2>&1 || put_secret ehs-jwt-secret "$(openssl rand -hex 32)"
 if gcloud secrets describe ehs-db-password >/dev/null 2>&1; then
   DB_PASSWORD="$(gcloud secrets versions access latest --secret ehs-db-password)"
@@ -95,11 +100,16 @@ fi
 DB_IP="$(gcloud compute instances describe "$DB_VM" --zone "$ZONE" --format 'value(networkInterfaces[0].networkIP)')"
 put_secret ehs-database-url "postgresql+pg8000://${DB_USER}:${DB_PASSWORD}@${DB_IP}:5432/${DB_NAME}"
 
-SECRETS="DATABASE_URL=ehs-database-url:latest,JWT_SECRET_KEY=ehs-jwt-secret:latest,GEMINI_API_KEY=ehs-gemini-api-key:latest"
+SECRETS="DATABASE_URL=ehs-database-url:latest,JWT_SECRET_KEY=ehs-jwt-secret:latest"
 TG="$(envval TELEGRAM_BOT_TOKEN)"; FT="$(envval FONNTE_TOKEN)"
 if [ -n "$TG" ]; then put_secret ehs-telegram-token "$TG"; SECRETS="$SECRETS,TELEGRAM_BOT_TOKEN=ehs-telegram-token:latest"; fi
 if [ -n "$FT" ]; then put_secret ehs-fonnte-token "$FT"; SECRETS="$SECRETS,FONNTE_TOKEN=ehs-fonnte-token:latest"; fi
 ENV_VARS="GCS_BUCKET_NAME=${BUCKET},UPLOADS_DIR=/tmp/uploads"
+if [ "$USE_VERTEX" = "true" ]; then
+  ENV_VARS="${ENV_VARS},GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=global"
+else
+  SECRETS="${SECRETS},GEMINI_API_KEY=ehs-gemini-api-key:latest"
+fi
 for v in TELEGRAM_CHAT_ID WA_TARGET_PHONE; do
   val="$(envval $v)"; [ -n "$val" ] && ENV_VARS="${ENV_VARS},${v}=${val}"
 done
@@ -122,8 +132,10 @@ gcloud run deploy "$WEB_SERVICE" --image "$WEB_IMAGE" --region "$REGION" --allow
 WEB_URL="$(gcloud run services describe "$WEB_SERVICE" --region "$REGION" --format 'value(status.url)')"
 
 echo "==> Wiring public URLs and CORS"
+# Cloud Run serves each service on two hostnames; allow both for the browser.
+WEB_URL_ALT="https://${WEB_SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
 gcloud run services update "$API_SERVICE" --region "$REGION" \
-  --update-env-vars "PUBLIC_API_BASE_URL=${API_URL},CORS_ORIGINS=${WEB_URL}" >/dev/null
+  --update-env-vars "^@^PUBLIC_API_BASE_URL=${API_URL}@CORS_ORIGINS=${WEB_URL},${WEB_URL_ALT}" >/dev/null
 
 cat <<EOF
 

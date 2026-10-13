@@ -1,97 +1,47 @@
-# 🎙️ EHS Safety Platform — Naskah Pitching & Kunci Jawaban Tanya-Jawab Juri
+# SafeSight — Panduan Pitch, Naskah Demo & Jawaban untuk Juri
 
-> **Pilihan Bahasa:** [English](PITCH_GUIDE.md) | 🇮🇩 **Bahasa Indonesia**
+> **Bahasa:** 🇬🇧 [English](PITCH_GUIDE.md) | 🇮🇩 Bahasa Indonesia
+>
+> Rekam video dan presentasikan dalam **bahasa Inggris** (naskah lengkap ada di versi English). Dokumen ini
+> menjelaskan alurnya dalam bahasa Indonesia untuk persiapan.
 
-Panduan ini berisi naskah presentasi (*pitch script*), panduan langkah demi langkah demonstrasi langsung (*live demo*), dan kunci jawaban teknis untuk memukau dewan juri Hackathon dan eksekutif industri.
+## 1. Pitch 30 detik (inti pesannya)
 
----
+Kebanyakan kecelakaan kerja serius didahului sesuatu yang bisa dilihat kamera: harness tidak dikaitkan, pejalan kaki
+di jalur forklift, percikan api dekat tabung gas. CCTV-nya sudah ada, tapi tidak ada yang menonton. **SafeSight**
+mengubah CCTV atau ponsel menjadi inspektur K3: mengenali pekerjaan, menerapkan policy perusahaan, menandai setiap
+bahaya, dan menghentikan pekerjaan dalam hitungan detik, sambil memblur wajah dan tidak menyimpan rekaman yang aman.
 
-## ⏱️ Bagian 1: Elevator Pitch (60 Detik)
+## 2. Urutan demo 3 menit
 
-> *"Setiap hari, area pabrik manufaktur dan konstruksi berat beroperasi di bawah risiko tinggi. Namun, pengawasan K3 tradisional terjebak dalam tiga celah fatal: pengawas manusia tidak bisa berada di semua titik secara bersamaan, presensi pekerja kontraktor hilang dalam tumpukan kertas, dan pekerja lapangan yang panik tidak sempat mengetik formulir laporan.*
-> 
-> *Kami membangun **EHS Safety Platform — Enterprise AI Co-Pilot bertenaga Google Gemini 1.5 Flash**. 
-> 
-> *Alih-alih memakai computer vision jadul yang kaku, platform kami memanfaatkan **Native Multimodal Vision** untuk mengaudit CCTV secara real-time berdasarkan aturan dinamis tanpa perlu koding ulang. Melalui sistem **E-Permit Digital**, pekerja kontraktor harian bahkan tidak perlu mengunduh aplikasi apa pun. Saat terjadi keadaan darurat, pekerja cukup berbicara lewat **Native iOS Voice SOS**, dan Gemini akan mengekstrak tiket insiden berstruktur dalam 2 detik serta langsung membunyikan alarm di Telegram dan WhatsApp. 
-> 
-> *Kami mengubah sistem K3 industri dari tumpukan kertas birokrasi yang lambat menjadi kecerdasan penyelamat nyawa yang instan dan proaktif."*
+| Waktu | Halaman | Yang dilakukan |
+|---|---|---|
+| 0:00–0:15 | Slide / Overview | Buka dengan masalah: 395 juta pekerja cedera per tahun, CCTV tidak ditonton |
+| 0:15–0:35 | **Overview** | Tunjukkan tren, stop-work orders, lokasi paling rawan |
+| 0:35–1:15 | **AI Inspection → Photo** | Biarkan *Auto-detect*, klik contoh **Hot work**, jalankan. Tunjukkan kotak bahaya, Stop Work, notifikasi Telegram di HP, dan wajah yang diblur |
+| 1:15–1:50 | **AI Inspection → CCTV video** | Contoh **Forklift aisle**, jalankan, klik event di timeline untuk loncat ke detiknya |
+| 1:50–2:15 | **Inspection History → View → Generate incident report** | Tunjukkan 5-Why, akar masalah, tabel tindakan korektif |
+| 2:15–2:40 | **EHS Co-Pilot** | Klik pertanyaan "biggest risk"; tunjukkan jejak tool yang dipanggil agent |
+| 2:40–2:55 | **Safety Policies** | Upload PDF SOP, tunjukkan aturan yang terbentuk |
+| 2:55–3:00 | Overview | Penutup: *"AI that sees hazards before they become incidents."* |
 
----
+**Persiapan:** HP dengan Telegram terbuka di samping layar, satu PDF SOP pendek, dan uji coba sekali sebelum
+merekam (foto ±10–15 detik, video ±10 detik di Vertex AI).
 
-## 🎬 Bagian 2: Alur Live Demo (3 Menit)
+## 3. Nilai jual utama
 
-Ikuti urutan langkah berikut saat melakukan demonstrasi di depan juri untuk efek dramatis yang maksimal:
+1. **Bukti visual:** setiap temuan ada kotaknya di foto atau timestamp-nya di video.
+2. **Mengikuti policy perusahaan:** aturan berasal dari PDF SOP Anda sendiri.
+3. **Bisa membaca video CCTV langsung.**
+4. **AI yang bertanggung jawab:** tidak mengarang putusan, blur wajah, foto aman tidak disimpan, ada tanda tangan manusia.
+5. **Terukur:** recall 100 % di set uji, setiap false positive dijelaskan ([EVALUATION.md](EVALUATION.md)).
+6. **Siap produksi di Google Cloud:** Cloud Run, Vertex AI, Cloud Storage privat, Secret Manager, deploy satu perintah.
 
-### Babak 1: Web Dashboard & Injeksi Dokumen Regulasi
-* **Aksi:** Buka `http://localhost:3000/policies`.
-* **Narasi yang Diucapkan:**
-  > *"Pertama, mari kita lihat 'otak' dari pabrik ini. Daripada menyewa programmer setiap kali ada standar keselamatan baru, Admin K3 cukup menekan tombol **'Upload Safety Standard / PDF'**. Di sini, saya mengunggah standar klausul ISO 45001 dan panduan darurat pabrik. Dalam waktu 2 detik, Gemini langsung membaca dokumen ini dan menciptakan parameter kepatuhan otomatis tanpa perlu melatih ulang (re-train) model AI."*
+## 4. Pertanyaan juri yang mungkin muncul
 
-### Babak 2: Digital E-Permits & Arsitektur Tanpa Beban bagi Vendor
-* **Aksi:** Buka menu `http://localhost:3000/permits` dan tampilkan salah satu izin kerja aktif (misal: `Hot Work Tank B`).
-* **Narasi yang Diucapkan:**
-  > *"Di lapangan, kontraktor sering mengganti pekerja harian tanpa izin. Untuk mencegah hal ini tanpa membebani pekerja biasa dengan instalasi aplikasi, kami menerapkan **Sistem Manifest Kerja Harian (Denwacho)**. Admin mendaftarkan daftar pekerja tim secara terpusat di database. Mandor memeriksa kehadiran di lokasi via HP. Pekerja biasa nol beban — zero friction, namun akuntabilitas tetap 100%."*
-
-### Babak 3: Native iOS AI Co-Pilot (Kecerdasan Dual-Brain)
-* **Aksi:** Buka aplikasi iOS di iPhone, buka tab **AI Guide**, lalu ketik pertanyaan (contoh: *"Apa APD wajib untuk ruang terbatas dan bagaimana pertolongan pertama jika ada kebocoran gas?"*).
-* **Narasi yang Diucapkan:**
-  > *"Sekarang mari kita lihat dari sudut pandang pekerja lapangan. Aplikasi iPhone kami dilengkapi **AI Co-Pilot berarsitektur Dual-Brain**. Prioritas pertama: ia mengambil jawaban mutlak dari dokumen PDF SOP yang tadi kita unggah. Prioritas kedua: jika pertanyaan darurat tidak ada di dokumen lokal, Gemini secara otomatis mengaktifkan pengetahuan K3 globalnya seperti standar OSHA dan P3K medis. Pekerja mendapatkan panduan keselamatan instan di genggaman tangannya."*
-
-### Babak 4: Gemini Multimodal Vision & Eskalasi Instan
-* **Aksi:** Di menu Sandbox atau API, kirimkan foto inspeksi yang melanggar aturan (misal: pekerja mengelas tanpa pelindung wajah gelap di dekat tangki). Tunjukkan status permit yang otomatis menjadi SUSPENDED, lalu buka aplikasi Telegram yang menerima notifikasi darurat.
-* **Narasi yang Diucapkan:**
-  > *"Terakhir, ini adalah fitur pamungkas kami: **Audit Visual Real-Time**. Saat kamera mengirim foto ke Gemini 1.5 Flash, AI tidak sekadar menggambar kotak deteksi. AI melakukan **penalaran konteks dan spasial** — menyadari bahwa pekerja sedang mengelas tanpa pelindung wajah gelap. Seketika itu juga, Gemini menetapkan ini sebagai pelanggaran KRITIS, secara otomatis membekukan izin kerja (Stop-Work Order), dan menembakkan bukti foto ke grup Telegram dan WhatsApp pimpinan pabrik. Nyawa pekerja terselamatkan sebelum kecelakaan terjadi."*
-
----
-
-## 🛡️ Bagian 3: Pertahanan Tanya-Jawab Juri (Kunci Jawaban Anti-Gagal)
-
-### ❓ Pertanyaan 1: "Kenapa menggunakan Gemini 1.5 Flash dibanding model klasik seperti YOLOv8 atau OpenCV?"
-> **Kunci Jawaban Emas:**
-> *"Model deteksi objek tradisional seperti YOLO membutuhkan ribuan foto berlabel dan waktu training berhari-hari setiap kali pabrik mengganti warna rompi APD atau menambah alat baru. Selain itu, YOLO tidak punya pemahaman konteks — ia hanya tahu ada helm di kepala, tapi tidak tahu apakah tali helmnya terpasang, atau apakah pekerja sedang berdiri tepat di bawah beban derek yang melayang. 
-> Dengan **Google Gemini 1.5 Flash**, kami mendapatkan kemampuan **Zero-Shot Contextual Reasoning**. Petugas K3 cukup menuliskan aturan dalam bahasa manusia biasa, dan Gemini mampu menalar hubungan spasial, risiko lingkungan, dan posisi bahaya alat berat secara bersamaan dalam hitungan sub-detik."*
-
----
-
-### ❓ Pertanyaan 2: "Bagaimana cara Anda menjamin AI tidak berhalusinasi dalam urusan keselamatan nyawa manusia?"
-> **Kunci Jawaban Emas:**
-> *"Kami memasang 3 lapis sistem pengaman (guardrails):
-> 1. **Strict Context RAG:** Prompt utama mengunci Gemini agar wajib mendasarkan auditnya pada izin kerja aktif dan dokumen SOP resmi yang diunggah ke database.
-> 2. **Pydantic Structured Output:** Kami tidak membiarkan AI menjawab dalam bentuk teks bebas yang bertele-tele. Kami mengunci format keluarannya dengan skema JSON kaku (`response_schema=AuditResult`) yang membatasi tingkat risiko hanya pada 4 level baku (`NONE`, `LOW`, `MEDIUM`, `CRITICAL`).
-> 3. **Low Temperature Inference:** Kami menjalankan pemrosesan visual pada temperatur `0.1` untuk menghilangkan variasi kreatif model dan memastikan konsistensi hasil audit."*
-
----
-
-### ❓ Pertanyaan 3: "Kenapa tidak semua pekerja lapangan diwajibkan mengunduh aplikasi mobile?"
-> **Kunci Jawaban Emas:**
-> *"Di proyek konstruksi dan perbaikan pabrik skala besar, 70% tenaga kerja adalah buruh harian lepas dari vendor pihak ketiga yang berganti-ganti setiap pekan. Memaksa ratusan pekerja lepas membuat akun, mengunduh aplikasi, dan mengingat password terbukti gagal total di industri nyata karena tingkat friksi yang terlalu tinggi. 
-> Arsitektur kami menempatkan beban pada tempat yang tepat: **Pengawas K3 Internal dan Mandor Kontraktor** yang memegang aplikasi untuk validasi digital, sementara pekerja lapangan berinteraksi tanpa friksi melalui fitur Laporan Suara (Voice SOS) dan kamera pintar pengawas."*
-
----
-
-### ❓ Pertanyaan 4: "Bagaimana jika koneksi internet di lokasi proyek terputus?"
-> **Kunci Jawaban Emas:**
-> *"Untuk fase MVP ini, kami memusatkan pemrosesan multimodal di cloud agar akurasinya maksimal. Namun, arsitektur kami dirancang modular: semua data izin kerja aktif dan aturan keselamatan sudah tersimpan di database lokal. Pada **Roadmap Fase 2**, kami telah menyiapkan model Edge terkompresi (seperti CoreML / TFLite) di ponsel atau perangkat gerbang untuk deteksi APD dasar di area tanpa sinyal, yang akan langsung sinkron otomatis ke mesin Gemini saat sinyal internet kembali tersambung."*
-
----
-
-### ❓ Pertanyaan 5: "Bagaimana model bisnis dan monetisasi dari platform ini?"
-> **Kunci Jawaban Emas:**
-> *"Kami menerapkan model **B2B Enterprise SaaS** dengan 3 aliran pendapatan:
-> 1. **Langganan Berjenjang per Pabrik:** Dihitung berdasarkan jumlah izin kerja aktif dan titik integrasi kamera CCTV.
-> 2. **Tiket Kepatuhan Vendor:** Kontraktor membayar biaya verifikasi digital per proyek untuk audit kualifikasi K3 otomatis.
-> 3. **Diskon Premi Asuransi Kerja:** Karena platform kami menyediakan catatan audit K3 yang transparan dan anti-manipulasi, perusahaan manufaktur dapat menggunakannya untuk menegosiasikan pemotongan premi asuransi kecelakaan kerja hingga 15–20% kepada pihak penjamin asuransi."*
-
----
-
-## 💎 Bagian 4: Kosakata Kunci & Frasa Berbobot Tinggi (Soundbites)
-
-Sisipkan istilah-istilah profesional ini dalam penjelasan Anda agar terdengar meyakinkan:
-
-| Istilah Keren | Cara Menggunakannya dalam Kalimat |
-|---------------|-----------------------------------|
-| **"Zero-Shot Compliance Enforcement"** | *"Tanpa proses training ulang — aturan yang ditulis dalam teks biasa langsung berlaku detik itu juga."* |
-| **"Frictionless Contractor Architecture"** | *"Nol hambatan instalasi aplikasi bagi buruh harian lapangan."* |
-| **"Dual-Brain Hybrid Intelligence"** | *"Mengutamakan dokumen lokal pabrik sebagai kebenaran mutlak, didukung standar keselamatan global OSHA."* |
-| **"Contextual Spatial Reasoning"** | *"Memahami kedekatan posisi pekerja dengan sumber bahaya, bukan sekadar menggambar kotak deteksi objek."* |
-| **"Automated Stop-Work Lockdown"** | *"Pelanggaran berstatus KRITIS secara otomatis menghentikan izin kerja dan membunyikan alarm darurat."* |
+- **Kenapa tidak pakai YOLO?** Detektor klasik butuh data latih per kelas dan tidak bisa membaca policy. Gemini paham konteks dan aturan baru cukup berupa teks/PDF.
+- **Bagaimana dengan alarm palsu?** Di set uji tidak ada pelanggaran yang terlewat; kelebihan flag kebanyakan karena policy yang ketat (misal wajib helm). Setiap flag disertai bukti visual.
+- **Kalau Gemini sedang down?** Ada rantai cadangan 4 model; jika semua gagal, sistem mengembalikan error dan tidak mencatat apa pun.
+- **Privasi pekerja?** Wajah diblur, rekaman aman tidak disimpan, bucket privat.
+- **Biaya?** Bayar per pemanggilan di Vertex AI dan Cloud Run bisa turun ke nol saat tidak dipakai.
+- **Real-time?** Saat ini foto dan klip dalam hitungan detik; berikutnya streaming RTSP terus-menerus dengan pipeline yang sama.

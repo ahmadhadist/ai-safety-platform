@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   UploadCloud, CheckCircle2, OctagonX, AlertTriangle, ScanEye, HeartPulse, Sun, ShieldCheck, Cpu, BellRing,
-  MapPin, Thermometer, ChevronDown, Image as ImageIcon, Lightbulb, Users,
+  MapPin, Thermometer, ChevronDown, Image as ImageIcon, Lightbulb, Users, Sparkles, Video, EyeOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import EvidenceViewer from "@/components/EvidenceViewer";
@@ -10,10 +10,23 @@ import { ACTION_LABEL, actionKey, humanize, riskLabel } from "@/lib/labels";
 
 type Policy = { id: string; title: string; permit_type: string; dynamic_rules: any };
 
-const SAMPLES = [
-  { file: "/samples/demo_violation_welding.jpg", label: "Hot work", policy: "Standard Hot Work", location: "Welding Bay A" },
-  { file: "/samples/demo_compliant_worker.jpg", label: "Site worker", policy: "General Factory Floor", location: "Assembly Line 1" },
-];
+type Mode = "photo" | "video";
+const AUTO = "auto";
+
+const SAMPLES: Record<Mode, { file: string; label: string; location: string }[]> = {
+  photo: [
+    { file: "/samples/demo_violation_welding.jpg", label: "Hot work", location: "Welding Bay A" },
+    { file: "/samples/ladder_no_harness.jpg", label: "Ladder", location: "Building C - Level 2" },
+    { file: "/samples/electrical_panel.jpg", label: "Electrical", location: "Substation B" },
+    { file: "/samples/welding_full_ppe.jpg", label: "Safe welder", location: "Welding Bay A" },
+  ],
+  video: [
+    { file: "/samples/cctv_warehouse_forklift.mp4", label: "Forklift aisle", location: "Warehouse Dock 2" },
+    { file: "/samples/cctv_scaffold_edge.mp4", label: "Scaffold edge", location: "Scaffold Zone - Unit 4" },
+  ],
+};
+
+const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const LOCATIONS = ["Welding Bay A", "Scaffold Zone - Unit 4", "Assembly Line 1", "Warehouse Dock 2", "Substation B", "Tank Farm - T3"];
 
 const VERDICT = {
@@ -24,7 +37,8 @@ const VERDICT = {
 
 export default function SandboxPage() {
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [policyId, setPolicyId] = useState("");
+  const [mode, setMode] = useState<Mode>("photo");
+  const [policyId, setPolicyId] = useState(AUTO);
   const [location, setLocation] = useState(LOCATIONS[0]);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -37,11 +51,11 @@ export default function SandboxPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     api.get("/policies/templates").then((res) => {
       setPolicies(res.data);
-      if (res.data.length) setPolicyId(res.data[0].id);
     }).catch(console.error);
   }, []);
 
@@ -61,36 +75,42 @@ export default function SandboxPage() {
 
   const selectedPolicy = policies.find((p) => p.id === policyId);
 
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setFile(null);
+    setResult(null);
+    setError("");
+  };
+
   const pickFile = (f: File | null | undefined) => {
-    if (!f || !f.type.startsWith("image/")) return;
+    if (!f || !(mode === "photo" ? /^image\//.test(f.type) : /^video\/|\.(mp4|mov|webm)$/i.test(f.type || f.name))) return;
     setFile(f);
     setResult(null);
     setError("");
   };
 
-  const loadSample = async (s: (typeof SAMPLES)[number]) => {
+  const loadSample = async (s: { file: string; location: string }) => {
     const blob = await (await fetch(s.file)).blob();
-    pickFile(new File([blob], s.file.split("/").pop()!, { type: blob.type || "image/jpeg" }));
-    const match = policies.find((p) => p.title === s.policy);
-    if (match) setPolicyId(match.id);
+    pickFile(new File([blob], s.file.split("/").pop()!, { type: blob.type || (mode === "photo" ? "image/jpeg" : "video/mp4") }));
+    setPolicyId(AUTO);
     setLocation(s.location);
   };
 
   const runInspection = async () => {
-    if (!file || !policyId) return;
+    if (!file) return;
     setLoading(true);
     setError("");
     setResult(null);
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append(mode === "photo" ? "image" : "video", file);
     formData.append("policy_id", policyId);
     formData.append("location", location);
-    if (showSensors) {
+    if (mode === "photo" && showSensors) {
       formData.append("sensor_temperature_c", String(sensorTemp));
       formData.append("sensor_humidity_pct", String(sensorHumid));
     }
     try {
-      const res = await api.post("/inspections/audit", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      const res = await api.post(mode === "photo" ? "/inspections/audit" : "/inspections/video", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setResult(res.data);
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Inspection failed. Check that the backend is reachable.");
@@ -109,7 +129,7 @@ export default function SandboxPage() {
           <ScanEye className="text-blue-600" size={30} /> AI Safety Inspection
         </h2>
         <p className="text-slate-500 mt-1">
-          Upload a CCTV frame or field photo. Gemini checks it against your safety policy, pinpoints every hazard, and escalates instantly.
+          Upload a field photo or a CCTV clip. Gemini recognises the work, applies the right safety policy, pinpoints every hazard and escalates instantly.
         </p>
       </div>
 
@@ -117,14 +137,29 @@ export default function SandboxPage() {
         {/* ---------------- Input ---------------- */}
         <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5 h-fit">
           <div>
+            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-4">
+              {(["photo", "video"] as Mode[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => switchMode(m)}
+                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${mode === m ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  {m === "photo" ? <ImageIcon size={16} /> : <Video size={16} />} {m === "photo" ? "Photo" : "CCTV video"}
+                </button>
+              ))}
+            </div>
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">1 · Safety policy</label>
             <select
               value={policyId}
               onChange={(e) => setPolicyId(e.target.value)}
               className="mt-1.5 w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
             >
+              <option value={AUTO}>✨ Auto-detect from the scene (recommended)</option>
               {policies.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
+            {policyId === AUTO && (
+              <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1"><Sparkles size={12} className="text-violet-500" /> Gemini identifies the activity and picks the matching policy.</p>
+            )}
             {rules.required_ppe?.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {rules.required_ppe.map((ppe: string) => (
@@ -149,7 +184,7 @@ export default function SandboxPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">3 · Photo</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">3 · {mode === "photo" ? "Photo" : "CCTV clip (max 25 MB)"}</label>
             <div
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -161,21 +196,23 @@ export default function SandboxPage() {
             >
               {previewUrl ? (
                 <div className="relative">
-                  <img src={previewUrl} alt="Selected" className="w-full max-h-56 object-cover" />
+                  {mode === "photo"
+                    ? <img src={previewUrl} alt="Selected" className="w-full max-h-56 object-cover" />
+                    : <video src={previewUrl} className="w-full max-h-56 object-cover" muted />}
                   <span className="absolute bottom-2 right-2 text-[11px] bg-black/60 text-white px-2 py-0.5 rounded">Click to change</span>
                 </div>
               ) : (
                 <div className="p-8 flex flex-col items-center text-center">
                   <UploadCloud className="w-10 h-10 text-blue-500 mb-2" />
-                  <p className="text-sm font-medium text-slate-700">Drop a photo here or click to browse</p>
-                  <p className="text-xs text-slate-400 mt-1">JPG or PNG</p>
+                  <p className="text-sm font-medium text-slate-700">Drop a {mode === "photo" ? "photo" : "video clip"} here or click to browse</p>
+                  <p className="text-xs text-slate-400 mt-1">{mode === "photo" ? "JPG or PNG" : "MP4, MOV or WebM · 10-60 s works best"}</p>
                 </div>
               )}
-              <input type="file" className="hidden" ref={fileInputRef} accept="image/*" onChange={(e) => pickFile(e.target.files?.[0])} />
+              <input type="file" className="hidden" ref={fileInputRef} accept={mode === "photo" ? "image/*" : "video/*"} onChange={(e) => pickFile(e.target.files?.[0])} />
             </div>
-            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-500">
               <ImageIcon size={14} /> Try a sample:
-              {SAMPLES.map((s) => (
+              {SAMPLES[mode].map((s) => (
                 <button key={s.file} onClick={() => loadSample(s)} className="px-2 py-1 rounded-lg border border-slate-200 hover:border-blue-400 hover:text-blue-600 transition-colors">
                   {s.label}
                 </button>
@@ -183,7 +220,7 @@ export default function SandboxPage() {
             </div>
           </div>
 
-          <div className="border border-slate-200 rounded-xl">
+          {mode === "photo" && <div className="border border-slate-200 rounded-xl">
             <button onClick={() => setShowSensors(!showSensors)} className="w-full flex items-center justify-between p-3 text-sm text-slate-700">
               <span className="flex items-center gap-2"><Thermometer size={16} className={showSensors ? "text-amber-500" : "text-slate-400"} /> IoT sensor fusion {showSensors ? "(on)" : "(optional)"}</span>
               <ChevronDown size={16} className={`transition-transform ${showSensors ? "rotate-180" : ""}`} />
@@ -199,11 +236,11 @@ export default function SandboxPage() {
                 <p className="col-span-2 text-[11px] text-slate-400">Combined with the image to detect heat-stress risk.</p>
               </div>
             )}
-          </div>
+          </div>}
 
           <button
             onClick={runInspection}
-            disabled={loading || !file || !policyId}
+            disabled={loading || !file}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
           >
             <ScanEye size={18} /> {loading ? `Analysing… ${elapsed}s` : "Run AI Inspection"}
@@ -224,11 +261,11 @@ export default function SandboxPage() {
             <div className="space-y-4">
               {previewUrl && (
                 <div className="relative rounded-xl overflow-hidden border border-slate-700">
-                  <img src={previewUrl} alt="" className="w-full opacity-60" />
+                  {mode === "photo" ? <img src={previewUrl} alt="" className="w-full opacity-60" /> : <video src={previewUrl} className="w-full opacity-60" muted autoPlay loop />}
                   <div className="scan-line absolute left-0 right-0 h-1 bg-blue-400 shadow-[0_0_24px_6px_rgba(96,165,250,0.6)]" />
                 </div>
               )}
-              <p className="text-sm text-slate-300 flex items-center gap-2"><Cpu size={16} className="animate-pulse text-blue-400" /> Gemini is inspecting PPE, unsafe acts, housekeeping and hygiene…</p>
+              <p className="text-sm text-slate-300 flex items-center gap-2"><Cpu size={16} className="animate-pulse text-blue-400" /> {mode === "photo" ? "Gemini is inspecting PPE, unsafe acts, housekeeping and hygiene…" : "Gemini is watching the clip and building a violation timeline…"}</p>
             </div>
           )}
 
@@ -251,16 +288,66 @@ export default function SandboxPage() {
               </div>
 
               <p className="text-base font-medium text-slate-100">{result.summary_headline}</p>
+              <p className="text-xs text-slate-400 -mt-2 flex flex-wrap items-center gap-1.5">
+                {result.policy_auto_detected && <Sparkles size={12} className="text-violet-400" />}
+                Activity: <span className="text-slate-200">{result.detected_activity}</span> · Policy {result.policy_auto_detected ? "auto-selected" : "applied"}: <span className="text-slate-200">{result.policy_title}</span>
+              </p>
 
-              {previewUrl && <EvidenceViewer src={previewUrl} observations={result.observations || []} />}
+              {mode === "photo" && previewUrl && <EvidenceViewer src={previewUrl} observations={result.observations || []} />}
+
+              {mode === "video" && previewUrl && (
+                <div className="space-y-2">
+                  <video ref={videoRef} src={previewUrl} controls className="w-full rounded-xl border border-slate-700 bg-black" />
+                  <div className="relative h-2 rounded-full bg-slate-700">
+                    {(result.events || []).map((e: any, i: number) => {
+                      const dur = videoRef.current?.duration || Math.max(...result.events.map((x: any) => x.end_seconds), 1);
+                      return (
+                        <button
+                          key={i}
+                          title={e.description}
+                          onClick={() => { if (videoRef.current) { videoRef.current.currentTime = e.start_seconds; videoRef.current.play(); } }}
+                          className={`absolute top-0 h-2 rounded-full ${e.severity === "CRITICAL" ? "bg-red-500" : e.severity === "MEDIUM" ? "bg-amber-400" : "bg-yellow-300"}`}
+                          style={{ left: `${(e.start_seconds / dur) * 100}%`, width: `${Math.max(2, ((e.end_seconds - e.start_seconds) / dur) * 100)}%` }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <ol className="space-y-1">
+                    {(result.events || []).map((e: any, i: number) => (
+                      <li key={i}>
+                        <button
+                          onClick={() => { if (videoRef.current) { videoRef.current.currentTime = e.start_seconds; videoRef.current.play(); } }}
+                          className="w-full text-left flex gap-3 p-2 rounded-lg hover:bg-slate-800 text-xs"
+                        >
+                          <span className="font-mono text-blue-300 shrink-0">{fmtTime(e.start_seconds)}–{fmtTime(e.end_seconds)}</span>
+                          <span className={`shrink-0 font-semibold ${e.severity === "CRITICAL" ? "text-red-400" : "text-amber-300"}`}>{e.severity}</span>
+                          <span className="text-slate-300">{e.description}</span>
+                        </button>
+                      </li>
+                    ))}
+                    {!result.events?.length && <li className="text-xs text-slate-400 p-2">No violations found in this clip.</li>}
+                  </ol>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <Fact label="Risk category" value={riskLabel(result)} />
-                <Fact label="People detected" value={result.worker_count_detected ?? "–"} icon={<Users size={12} />} />
-                <Fact label="Lighting" value={humanize(result.health_evaluation?.lighting_condition)} icon={<Sun size={12} />} />
-                <Fact label="Ergonomics" value={humanize(result.health_evaluation?.ergonomics_status)} icon={<HeartPulse size={12} />} />
-                <Fact label="Housekeeping (5S)" value={humanize(result.safety_perimeter_evaluation?.housekeeping_5s_status)} />
-                <Fact label="Perimeter" value={humanize(result.safety_perimeter_evaluation?.barrier_and_apar_status)} icon={<ShieldCheck size={12} />} />
+                <Fact label="People detected" value={result.worker_count_detected ?? result.max_workers_visible ?? "–"} icon={<Users size={12} />} />
+                {mode === "photo" ? (
+                  <>
+                    <Fact label="Lighting" value={humanize(result.health_evaluation?.lighting_condition)} icon={<Sun size={12} />} />
+                    <Fact label="Ergonomics" value={humanize(result.health_evaluation?.ergonomics_status)} icon={<HeartPulse size={12} />} />
+                    <Fact label="Housekeeping (5S)" value={humanize(result.safety_perimeter_evaluation?.housekeeping_5s_status)} />
+                    <Fact label="Perimeter" value={humanize(result.safety_perimeter_evaluation?.barrier_and_apar_status)} icon={<ShieldCheck size={12} />} />
+                  </>
+                ) : (
+                  <>
+                    <Fact label="Violations in clip" value={result.events?.length ?? 0} />
+                    <Fact label="First violation at" value={result.events?.length ? fmtTime(result.events[0].start_seconds) : "–"} />
+                    <Fact label="Severity" value={result.severity} />
+                    <Fact label="Policy" value={result.policy_title} />
+                  </>
+                )}
                 <Fact label="Action" value={ACTION_LABEL[action!]} />
                 <Fact label="Location" value={result.location || location} icon={<MapPin size={12} />} />
               </div>
@@ -278,7 +365,12 @@ export default function SandboxPage() {
                     <Cpu size={12} /> {result.model_used}{result.latency_ms ? ` · ${(result.latency_ms / 1000).toFixed(1)}s` : ""}
                   </span>
                 )}
-                <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">{result.data_retention_policy}</span>
+                {result.data_retention_policy && <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">{result.data_retention_policy}</span>}
+                {result.faces_blurred > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-violet-950/70 border border-violet-800 text-violet-300">
+                    <EyeOff size={12} /> {result.faces_blurred} face{result.faces_blurred > 1 ? "s" : ""} blurred in stored evidence
+                  </span>
+                )}
                 {result.status === "NON_COMPLIANT" && (
                   <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-950/70 border border-amber-800 text-amber-300">
                     <BellRing size={12} /> {result.alerts_dispatched?.length ? `Alert sent via ${result.alerts_dispatched.join(" + ")}` : "No alert channel configured"}

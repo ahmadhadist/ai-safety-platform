@@ -1,97 +1,69 @@
-# 🎙️ EHS Safety Platform — Pitch Script & Judge Q&A Defense Cheat Sheet
+# SafeSight — Pitch, Demo Script & Judge Q&A
 
-> **Languages:** 🇬🇧 **English** | 🇮🇩 [Bahasa Indonesia](PITCH_GUIDE_ID.md)
+> **Languages:** 🇬🇧 English | 🇮🇩 [Bahasa Indonesia](PITCH_GUIDE_ID.md)
 
-This playbook contains battle-tested pitch scripts, live demo walkthroughs, and technical defense answers designed to help you win over hackathon judges and enterprise executives.
+## 1. Thirty-second pitch
 
----
+> "Most serious workplace injuries are preceded by something a camera could have seen: a missing harness, a pedestrian
+> in a forklift lane, sparks next to gas cylinders. Sites already have the cameras, but nobody is watching.
+>
+> **SafeSight** turns any CCTV feed or phone into a safety inspector. Gemini on Vertex AI recognises the work being done,
+> applies the right company policy, boxes every hazard on the image and stops the work in seconds, while blurring faces
+> and discarding footage of safe work. On our test set it caught every violation."
 
-## ⏱️ Section 1: The 60-Second Elevator Pitch
+## 2. Three-minute demo video (shot list)
 
-> *"Every day, heavy manufacturing and construction sites operate under high risk, yet safety oversight is plagued by three fatal bottlenecks: human inspectors cannot be everywhere at once, contractor roll-calls are lost in paper bureaucracy, and workers in panic cannot fill out incident forms.*
-> 
-> *We built the **EHS Safety Platform — an Enterprise AI Co-Pilot powered by Google Gemini 1.5 Flash**. 
-> 
-> *Instead of rigid legacy computer vision, our platform uses **Native Multimodal Vision** to audit worksite CCTV in real-time against zero-hardcoded safety rules. With our **Digital E-Permit system**, temporary contractors don’t even need an app. When emergencies strike, workers simply talk into our **Native iOS Voice SOS**, and Gemini parses the audio into structured hazard tickets in two seconds while instantly triggering Telegram and WhatsApp alerts. 
-> 
-> *We are transforming industrial safety from slow, reactive paperwork into instant, proactive life-saving intelligence."*
+Record at 1440×900, browser zoom 100 %, logged in as admin. Do one dry run first so models are warm.
 
----
+| Time | Screen | Action | Voice-over |
+|---|---|---|---|
+| 0:00–0:15 | Slide or dashboard | — | "395 million workers are injured every year. Most incidents start as something visible. Cameras record it; nobody watches." |
+| 0:15–0:35 | **Overview** | Hover the trend bars, point at hotspot list | "This is SafeSight. Every inspection lands here: compliance rate, stop-work orders, and which areas are most dangerous: Scaffold Zone and Welding Bay." |
+| 0:35–1:15 | **AI Inspection → Photo** | Keep *Auto-detect*, click sample **Hot work**, run | "I don't tell it what to look for. Gemini recognises angle grinding, picks our Hot Work policy, and finds two hazards: no PPE, and sparks flying at gas cylinders. Each one is boxed. It's critical, so a stop-work order is issued and the supervisor gets this on Telegram (show phone). Notice the face is blurred in the stored evidence." |
+| 1:15–1:50 | **AI Inspection → CCTV video** | Sample **Forklift aisle**, run, click the timeline event | "Photos are one thing; sites have hours of CCTV. Here's a clip. Gemini watches it and returns a timeline. Click, and we jump to the second the worker on his phone walks into the forklift lane." |
+| 1:50–2:15 | **Inspection History → View → Generate incident report** | Scroll to 5 Whys and actions table | "One click turns the finding into an investigation report: five whys, root cause, and corrective actions ranked by the hierarchy of controls, engineering before PPE. Print, sign, done." |
+| 2:15–2:40 | **EHS Co-Pilot** | Click *Which location is our biggest risk…* | "Managers can just ask. The agent decides which database tools to call, here risk trends and recent violations, and answers with real numbers. You can see exactly what it queried." |
+| 2:40–2:55 | **Safety Policies** | Click *Upload Safety Standard / PDF* (pre-picked SOP) | "New rule? Upload the SOP PDF. Gemini compiles it into an enforceable policy: PPE, prerequisites, limits." |
+| 2:55–3:00 | Dashboard | — | "SafeSight: AI that sees hazards before they become incidents. Built on Gemini, Vertex AI and Cloud Run." |
 
-## 🎬 Section 2: The 3-Minute Live Demo Flow
+**Before recording:** have Telegram open on a phone next to the screen, prepare a short SOP PDF, and run each sample
+once so you know the timings (photo ~10–15 s, video ~10 s on Vertex AI).
 
-Follow this exact sequence during your live presentation for maximum dramatic effect:
+## 3. Why it stands out
 
-### Act 1: The Web Dashboard & Universal Compliance Ingestion
-* **Action:** Open `http://localhost:3000/policies`.
-* **What to say:**
-  > *"First, let's look at the brain of the factory. Instead of hiring engineers to write custom code for every new safety rule, our HSE Admin simply clicks **'Upload Safety Standard / PDF'**. Here, I upload our factory's raw ISO 45001 standard and emergency protocol. In less than two seconds, Gemini ingests this document and generates dynamic compliance parameters without any model retraining."*
+1. **Grounded, not just generated.** Every claim is boxed on the image or timestamped in the video.
+2. **Policy-aware.** It enforces *your* rules, compiled from your own PDFs, not a fixed list of PPE classes.
+3. **Video-native.** Reviews CCTV clips directly; no frame-sampling pipeline to build.
+4. **Responsible by design.** Fail-safe (never invents a verdict), face blurring, auto-purge of safe footage, human sign-off.
+5. **Measured.** 100 % recall on the evaluation set, with every false positive explained ([EVALUATION.md](EVALUATION.md)).
+6. **Production-shaped on Google Cloud.** Cloud Run, Vertex AI, private Cloud Storage, Secret Manager, one-command deploy.
 
-### Act 2: Digital E-Permits & The Frictionless Worker Architecture
-* **Action:** Navigate to `http://localhost:3000/permits` and showcase an active permit (e.g., `Hot Work Tank B`).
-* **What to say:**
-  > *"Contractors frequently swap uncertified workers on-site undetected. To fix this without forcing low-literacy workers to install apps, we implement the **Denwacho shift-manifest system**. The admin registers the shift crew centrally in JSONB. The contractor lead verifies presence in seconds on-site. No app installation required for workers — zero friction, 100% accountability."*
+## 4. Judge Q&A
 
-### Act 3: Native iOS AI Co-Pilot (The Dual-Brain In Action)
-* **Action:** Open the iOS app on iPhone, go to **AI Guide**, and type a question (e.g., *"Apa APD wajib untuk ruang terbatas dan bagaimana pertolongan pertama gas bocor?"*).
-* **What to say:**
-  > *"Now let's switch to the field worker's perspective. Our iOS application features a **Dual-Brain AI Co-Pilot**. Priority one: it pulls exact ground-truth answers from our uploaded PDF policies. Priority two: if an emergency isn't in local documents, Gemini seamlessly activates its general OSHA and medical first-aid knowledge. The worker gets instant, life-saving answers in seconds."*
+**Why not a classic object detector like YOLO?**
+A detector needs labelled training data for every class and still can't read a policy. Gemini understands context
+(a harness that isn't clipped on, sparks *aimed at* cylinders) and new rules are just text or a PDF. Bounding boxes
+keep the output verifiable.
 
-### Act 4: Gemini Multimodal Vision & Instant Escalation
-* **Action:** In Web Sandbox or API, submit an inspection photo showing a violation (e.g., missing face shield near welding). Show the permit auto-suspending and open Telegram showing the incoming alert.
-* **What to say:**
-  > *"Finally, the killer feature: **Real-Time Visual Audit**. When camera footage is sent to Gemini 1.5 Flash, it doesn't just draw bounding boxes. It performs **contextual spatial reasoning** — detecting that the worker is welding without a dark visor. Instantly, Gemini classifies this as a CRITICAL infraction, automatically freezes the permit to stop work, and pushes a complete alert with photo evidence to our Telegram and WhatsApp channels. Human lives saved, before an accident happens."*
+**What about false alarms?**
+On our test set it missed nothing; the extra flags were mostly strict policy requirements (e.g. hard hat on the
+factory floor). Thresholds are per policy, and every flag comes with visual evidence a supervisor can dismiss in seconds.
 
----
+**What if Gemini is down or slow?**
+A fallback chain across four Gemini models. If none answers, the API returns an error and records nothing; it never
+guesses a violation or stops work on a hunch.
 
-## 🛡️ Section 3: Judge Q&A Defense (The "Bulletproof" Answers)
+**Privacy and worker surveillance?**
+Faces are blurred before storage, safe footage is never stored, and the bucket is private with no public access.
+The goal is to fix conditions, and the incident report steers toward engineering controls, not blaming individuals.
 
-### ❓ Question 1: "Why use Gemini 1.5 Flash instead of traditional YOLOv8 or OpenCV models?"
-> **The Golden Answer:**
-> *"Traditional computer vision like YOLO requires thousands of annotated bounding-box images and days of retraining every time a factory updates PPE colors or adds a new machine. Furthermore, YOLO lacks context — it only knows if a helmet exists, but not if the chinstrap is unbuckled or if the worker is standing directly beneath a suspended load. 
-> With **Google Gemini 1.5 Flash**, we achieve **Zero-Shot Contextual Reasoning**. The safety officer defines rules in plain human language, and Gemini reasons across spatial relationships, environmental risks, and equipment hazards simultaneously with sub-second inference."*
+**Cost at scale?**
+Inspection is pay-per-call on Vertex AI and Cloud Run scales to zero, so an idle site costs almost nothing. Only
+violation evidence is stored.
 
----
+**Is it real-time?**
+Today: photos and clips in seconds. Next: continuous RTSP stream monitoring, which uses the same inspection pipeline.
 
-### ❓ Question 2: "How do you prevent hallucinations in life-or-death safety situations?"
-> **The Golden Answer:**
-> *"We implement a three-tier guardrail system:
-> 1. **Strict Context RAG:** The primary prompt forces Gemini to ground its audit strictly against the factory's active digital permit and uploaded standard documents.
-> 2. **Pydantic Structured Output:** We do not accept freeform prose from the model. We enforce a rigid JSON schema (`AuditResult` / `VoiceReportResult`) with enumerated risk levels (`NONE`, `LOW`, `MEDIUM`, `CRITICAL`).
-> 3. **Low Temperature Inference:** We run our multimodal inference at temperature `0.1` to eliminate creative variance and enforce deterministic compliance checks."*
-
----
-
-### ❓ Question 3: "Why not require every single worker to download the mobile app?"
-> **The Golden Answer:**
-> *"In real-world construction and plant turnarounds, 70% of the workforce consists of temporary daily sub-contractors. Forcing hundreds of rotational workers to register accounts, download apps, and remember passwords creates massive friction and is ignored in practice. 
-> Our architecture assigns responsibility where it belongs: the **Internal Safety Inspector and Contractor Lead (Mandor)** carry the app to oversee digital permits, while workers interact frictionlessly through rapid Voice SOS or physical visual monitoring."*
-
----
-
-### ❓ Question 4: "What happens if worksite internet connectivity drops?"
-> **The Golden Answer:**
-> *"For our MVP, we prioritized centralized multimodal intelligence in the cloud. However, our architecture is decoupled by design: all active permits and dynamic rules are cached locally in the database. In our Phase 2 roadmap, we have architected on-device edge inference using quantized models (like CoreML / TFLite) for basic PPE checks in dead zones, which asynchronously syncs to the central Gemini engine once connectivity resumes."*
-
----
-
-### ❓ Question 5: "How does this platform generate business revenue?"
-> **The Golden Answer:**
-> *"We follow an **Enterprise B2B SaaS model** with three revenue streams:
-> 1. **Per-Plant Tiered Subscription:** Based on active permits and camera audit endpoints.
-> 2. **Contractor Compliance Pass:** Vendors pay a small fee per verified worker manifest for automated K3 certification audit.
-> 3. **Insurance Premium Reduction:** By providing an auditable, tamper-proof digital log of K3 compliance, manufacturing plants can negotiate up to 15-20% discounts on workplace liability insurance premiums."*
-
----
-
-## 💎 Section 4: Key Buzzwords & Soundbites
-
-Sprinkle these high-impact terms throughout your pitch:
-
-| Term | How to use it in conversation |
-|------|--------------------------------|
-| **"Zero-Shot Compliance Enforcement"** | *"No retraining cycles — rules written in plain text take effect immediately."* |
-| **"Frictionless Contractor Architecture"** | *"Zero app-download barrier for temporary field labor."* |
-| **"Dual-Brain Hybrid Intelligence"** | *"Internal factory RAG as ground truth, augmented by global OSHA standards."* |
-| **"Contextual Spatial Reasoning"** | *"Understanding proximity to hazards, not just bounding-box object detection."* |
-| **"Automated Stop-Work Lockdown"** | *"CRITICAL infractions automatically freeze permits and dispatch dual-channel alerts."* |
+**How do you know it works?**
+[docs/EVALUATION.md](EVALUATION.md): 16 human-reviewed images, production code path, 100 % recall, 87.5 % accuracy
+after adjudication. We are honest that it is a small, synthetic set; real-site footage is the next step.

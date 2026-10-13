@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { BRAND } from "@/lib/brand";
 import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 
@@ -52,8 +53,8 @@ export default function LoginPage() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
         <div className="bg-slate-900 p-8 text-center">
           <ShieldAlert className="text-red-500 w-16 h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white tracking-tight">EHS Global</h1>
-          <p className="text-slate-400 mt-2">Safety Enforcement Platform</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{BRAND.name}</h1>
+          <p className="text-slate-400 mt-2 text-sm">{BRAND.tagline}</p>
         </div>
         
         <form onSubmit={handleLogin} className="p-8 space-y-6">

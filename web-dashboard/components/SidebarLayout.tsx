@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -33,7 +34,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div>
           <div className="p-6 flex items-center gap-3">
             <ShieldAlert className="text-red-500 w-8 h-8" />
-            <h1 className="text-xl font-bold tracking-tight">EHS Global</h1>
+            <h1 className="text-xl font-bold tracking-tight">{BRAND.name}</h1>
           </div>
           <nav className="px-4 space-y-2 mt-4">
             <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/dashboard' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>

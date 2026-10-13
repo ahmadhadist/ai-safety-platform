@@ -1,0 +1,261 @@
+{
+  "summary": {
+    "images": 16,
+    "accuracy": 0.75,
+    "precision": 0.667,
+    "recall": 1.0,
+    "confusion": {
+      "tp": 8,
+      "tn": 4,
+      "fp": 4,
+      "fn": 0
+    },
+    "risk_category_agreement_on_violations": 0.875,
+    "median_seconds": 12.9,
+    "models": [
+      "gemini-3.6-flash"
+    ]
+  },
+  "rows": [
+    {
+      "id": "v01_welding_no_shield",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "FIRE_HEAT_CHEMICAL",
+      "predicted_risk": "FIRE_HEAT_CHEMICAL",
+      "severity": "CRITICAL",
+      "applied_policy": "Standard Hot Work",
+      "findings": [
+        "Worker is performing hot work without a welding helmet, eye protection, leather gloves, or flame-resistant clothing.",
+        "Hot welding sparks falling directly around stacked combustible cardboard boxes.",
+        "Worker staring directly at open arc flash without optical eye filter, risking arc eye (photokeratitis) and eye injury."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.9
+    },
+    {
+      "id": "v02_ladder_no_harness",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "WORKING_AT_HEIGHT",
+      "predicted_risk": "WORKING_AT_HEIGHT",
+      "severity": "CRITICAL",
+      "applied_policy": "Working at Height (WAH)",
+      "findings": [
+        "Worker is missing required PPE for height work: hard hat with chin strap, high-visibility vest, full body harness, and fall arrest lanyard.",
+        "Worker standing near top rungs of stepladder while stretching overhead without fall protection or proper 3-point contact.",
+        "Electrical cables, power tools, and timber offcuts strewn on the floor around ladder feet create severe trip hazards."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 16.2
+    },
+    {
+      "id": "v03_live_panel_bare_hands",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "ELECTRICAL",
+      "predicted_risk": "ELECTRICAL",
+      "severity": "CRITICAL",
+      "applied_policy": "Electrical Work & LOTO",
+      "findings": [
+        "Worker is handling internal electrical wiring bare-handed without insulated dielectric gloves.",
+        "Worker is not wearing an arc flash face shield or eye protection while working inside an electrical panel.",
+        "Performing work inside an energized electrical enclosure without verified LOTO procedure or required PPE."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 16.4
+    },
+    {
+      "id": "v04_forklift_pedestrian",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "VEHICLES",
+      "predicted_risk": "VEHICLES",
+      "severity": "CRITICAL",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Pedestrian walking in forklift operating zone without required High Visibility Vest, Hard Hat, or Safety Glasses.",
+        "Forklift driver operating vehicle without required Hard Hat and High Visibility Vest.",
+        "Pedestrian walking directly ahead of a loaded, operating forklift without maintaining a safe standoff distance."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 9.7
+    },
+    {
+      "id": "v05_suspended_load",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "FALLING_OBJECTS",
+      "predicted_risk": "FALLING_OBJECTS",
+      "severity": "CRITICAL",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Personnel positioned directly inside the drop zone under a heavy suspended steel beam load.",
+        "Worker missing hard hat and high-visibility vest required on site and around overhead hazards.",
+        "Worker missing hard hat and high-visibility vest.",
+        "Worker missing hard hat and high-visibility vest.",
+        "Worker missing hard hat and high-visibility vest.",
+        "Worker missing hard hat and high-visibility vest."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 17.6
+    },
+    {
+      "id": "v06_manhole_no_gas_detector",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "CONFINED_SPACE",
+      "predicted_risk": "CONFINED_SPACE",
+      "severity": "CRITICAL",
+      "applied_policy": "Confined Space Entry",
+      "findings": [
+        "Worker is missing a required respirator mask and gas detector while entering/exiting a dusty confined space.",
+        "Open manhole left completely unprotected without perimeter guardrails or warning barriers.",
+        "Airborne dust/fumes rising from the pit into the worker's breathing zone without respiratory PPE.",
+        "Hand tools and hoses strewn across the floor perimeter surrounding the open pit present tripping hazards."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 16.5
+    },
+    {
+      "id": "v07_spill_clutter",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "GENERAL",
+      "predicted_risk": "ELECTRICAL",
+      "severity": "CRITICAL",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Large accumulation of oil/fluid liquid pool across the shop floor posing severe slip hazard",
+        "Cables and flexible lines trailing directly through standing liquid creating electrical shock and tripping hazard",
+        "Worker missing high-visibility vest as required by factory floor policy"
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.8
+    },
+    {
+      "id": "v08_bad_lifting",
+      "expected_status": "NON_COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "GENERAL",
+      "predicted_risk": "GENERAL",
+      "severity": "MEDIUM",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Worker is missing required PPE: high-visibility vest, hard hat, and safety glasses.",
+        "Improper manual lifting posture: bending at the lumbar spine while lifting weight from ground level increases risk of musculoskeletal injury."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.2
+    },
+    {
+      "id": "c01_welding_full_ppe",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "COMPLIANT",
+      "expected_risk": "FIRE_HEAT_CHEMICAL",
+      "predicted_risk": "FIRE_HEAT_CHEMICAL",
+      "severity": "NONE",
+      "applied_policy": "Standard Hot Work",
+      "findings": [],
+      "model": "gemini-3.6-flash",
+      "seconds": 16.0
+    },
+    {
+      "id": "c02_scaffold_tied_off",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "WORKING_AT_HEIGHT",
+      "predicted_risk": "WORKING_AT_HEIGHT",
+      "severity": "CRITICAL",
+      "applied_policy": "Working at Height (WAH)",
+      "findings": [
+        "Safety lanyard is not secured to an approved overhead fall arrest anchor point.",
+        "Hard hat is worn without a fastened chin strap, required when working at height.",
+        "Loose tools and equipment lying on the platform deck pose tripping and falling object hazards."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 24.9
+    },
+    {
+      "id": "c03_panel_loto",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "COMPLIANT",
+      "expected_risk": "ELECTRICAL",
+      "predicted_risk": "ELECTRICAL",
+      "severity": "NONE",
+      "applied_policy": "Electrical Work & LOTO",
+      "findings": [],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.9
+    },
+    {
+      "id": "c04_forklift_segregated",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "COMPLIANT",
+      "expected_risk": "VEHICLES",
+      "predicted_risk": "VEHICLES",
+      "severity": "NONE",
+      "applied_policy": "General Factory Floor",
+      "findings": [],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.4
+    },
+    {
+      "id": "c05_site_full_ppe",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "COMPLIANT",
+      "expected_risk": "GENERAL",
+      "predicted_risk": "GENERAL",
+      "severity": "NONE",
+      "applied_policy": "General Factory Floor",
+      "findings": [],
+      "model": "gemini-3.6-flash",
+      "seconds": 11.9
+    },
+    {
+      "id": "c06_confined_space_proper",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "CONFINED_SPACE",
+      "predicted_risk": "CONFINED_SPACE",
+      "severity": "MEDIUM",
+      "applied_policy": "Confined Space Entry",
+      "findings": [
+        "Worker entering confined space is wearing a short-sleeved t-shirt instead of the required protective coverall.",
+        "Open manhole work zone lacks surrounding warning cones or safety barricades."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 14.3
+    },
+    {
+      "id": "c07_clean_factory",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "GENERAL",
+      "predicted_risk": "MACHINERY",
+      "severity": "MEDIUM",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Worker is not wearing a hard hat as required by General Factory Floor policy.",
+        "Worker is missing a high-visibility vest."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 12.5
+    },
+    {
+      "id": "c08_good_lifting",
+      "expected_status": "COMPLIANT",
+      "predicted_status": "NON_COMPLIANT",
+      "expected_risk": "GENERAL",
+      "predicted_risk": "GENERAL",
+      "severity": "LOW",
+      "applied_policy": "General Factory Floor",
+      "findings": [
+        "Worker is missing a required hard hat while working on the general factory floor.",
+        "Worker is not wearing eye protection (safety glasses)."
+      ],
+      "model": "gemini-3.6-flash",
+      "seconds": 11.6
+    }
+  ]
+}

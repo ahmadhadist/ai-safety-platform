@@ -4,6 +4,7 @@ import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Cam
 import { api } from "@/lib/api";
 import { ACTION_LABEL, actionKey, riskLabel, humanize } from "@/lib/labels";
 import EvidenceViewer, { GroundedObservation } from "@/components/EvidenceViewer";
+import IncidentReportModal from "@/components/IncidentReportModal";
 
 type Observation = GroundedObservation;
 
@@ -26,6 +27,10 @@ type AuditItem = {
     recommendation?: string;
     data_retention_policy?: string;
     model_used?: string;
+    media_type?: string;
+    detected_activity?: string;
+    policy_auto_detected?: boolean;
+    faces_blurred?: number;
     stop6_category?: string;
     risk_category?: string;
     health_evaluation?: {
@@ -47,6 +52,7 @@ export default function AuditsPage() {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAudit, setSelectedAudit] = useState<AuditItem | null>(null);
+  const [reportFor, setReportFor] = useState<AuditItem | null>(null);
   
   // Pagination state
   const [page, setPage] = useState(1);
@@ -184,7 +190,9 @@ export default function AuditsPage() {
               <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
                 <Camera className="w-5 h-5 text-slate-400" /> Evidence Photo
               </h3>
-              {selectedAudit.photo_url ? (
+              {selectedAudit.photo_url && selectedAudit.ai_raw_json.media_type === "video" ? (
+                <video src={selectedAudit.photo_url} controls className="w-full rounded-lg border border-slate-700 bg-black" />
+              ) : selectedAudit.photo_url ? (
                 <EvidenceViewer src={selectedAudit.photo_url} observations={selectedAudit.ai_raw_json.observations || []} />
               ) : (
                 <div className="w-full aspect-video bg-slate-900 rounded-lg border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500">
@@ -205,6 +213,14 @@ export default function AuditsPage() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-1">AI Safety Analysis</h3>
+                  {selectedAudit.compliance_status === "NON_COMPLIANT" && (
+                    <button
+                      onClick={() => setReportFor(selectedAudit)}
+                      className="mt-2 mb-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
+                    >
+                      ✍️ Generate incident report
+                    </button>
+                  )}
                   <p className="text-slate-500 text-sm">{selectedAudit.location || "Unspecified area"} · {selectedAudit.policy_title || "No policy"}</p>
                 </div>
                 <button onClick={() => setSelectedAudit(null)} className="text-slate-400 hover:text-slate-700 p-2 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors">
@@ -353,6 +369,15 @@ export default function AuditsPage() {
         </div>
       )}
 
+      {reportFor && (
+        <IncidentReportModal
+          auditId={reportFor.id}
+          location={reportFor.location || "Unspecified area"}
+          policy={reportFor.policy_title || "General"}
+          when={reportFor.created_at}
+          onClose={() => setReportFor(null)}
+        />
+      )}
     </div>
   );
 }

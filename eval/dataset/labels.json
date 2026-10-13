@@ -1,0 +1,114 @@
+[
+  {
+    "id": "v01_welding_no_shield",
+    "file": "v01_welding_no_shield.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "FIRE_HEAT_CHEMICAL",
+    "scene": "A welder arc-welding a steel beam wearing only a t-shirt and no welding helmet or face shield, bright sparks, cardboard boxes stacked nearby."
+  },
+  {
+    "id": "v02_ladder_no_harness",
+    "file": "v02_ladder_no_harness.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "WORKING_AT_HEIGHT",
+    "scene": "A worker standing on the top step of a tall A-frame ladder next to a roof edge about 4 meters high, no harness, no hard hat."
+  },
+  {
+    "id": "v03_live_panel_bare_hands",
+    "file": "v03_live_panel_bare_hands.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "ELECTRICAL",
+    "scene": "An electrician without gloves or safety glasses working inside an open electrical cabinet full of cables, panel door open, no lockout tag."
+  },
+  {
+    "id": "v04_forklift_pedestrian",
+    "file": "v04_forklift_pedestrian.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "VEHICLES",
+    "scene": "A pedestrian in plain clothes, no hard hat, walking directly in front of a moving forklift inside a warehouse aisle."
+  },
+  {
+    "id": "v05_suspended_load",
+    "file": "v05_suspended_load.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "FALLING_OBJECTS",
+    "scene": "Construction workers without hard hats standing directly underneath a steel beam suspended from a crane."
+  },
+  {
+    "id": "v06_manhole_no_gas_detector",
+    "file": "v06_manhole_no_gas_detector.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "CONFINED_SPACE",
+    "scene": "A worker climbing down into an open sewer manhole alone, no harness, no tripod, no gas detector, no attendant."
+  },
+  {
+    "id": "v07_spill_clutter",
+    "file": "v07_spill_clutter.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "GENERAL",
+    "scene": "A factory walkway with a large oil spill, tangled extension cords across the floor and scattered tools, a worker walking through it."
+  },
+  {
+    "id": "v08_bad_lifting",
+    "file": "v08_bad_lifting.jpg",
+    "expected_status": "NON_COMPLIANT",
+    "expected_risk_category": "GENERAL",
+    "scene": "A warehouse worker bending forward at the waist with straight legs and a rounded back to lift a heavy box from the floor, no gloves."
+  },
+  {
+    "id": "c01_welding_full_ppe",
+    "file": "c01_welding_full_ppe.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "FIRE_HEAT_CHEMICAL",
+    "scene": "A welder wearing a welding helmet, leather gloves and flame-resistant jacket welding a pipe, a fire extinguisher and welding screen beside him, clean floor."
+  },
+  {
+    "id": "c02_scaffold_tied_off",
+    "file": "c02_scaffold_tied_off.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "WORKING_AT_HEIGHT",
+    "scene": "A worker on a scaffold platform with full guardrails and toe boards, wearing a hard hat, hi-vis vest and harness with lanyard clipped to the guardrail."
+  },
+  {
+    "id": "c03_panel_loto",
+    "file": "c03_panel_loto.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "ELECTRICAL",
+    "scene": "An electrician in arc-flash face shield, insulated gloves and FR clothing next to a de-energized electrical panel with a red lockout padlock and tag on the breaker."
+  },
+  {
+    "id": "c04_forklift_segregated",
+    "file": "c04_forklift_segregated.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "VEHICLES",
+    "scene": "A warehouse with a forklift in a marked lane and a pedestrian in hi-vis vest and hard hat walking behind a yellow steel barrier in a separate walkway."
+  },
+  {
+    "id": "c05_site_full_ppe",
+    "file": "c05_site_full_ppe.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "GENERAL",
+    "scene": "Two construction workers wearing hard hats, hi-vis vests, safety glasses, gloves and safety boots reviewing drawings on a tidy site."
+  },
+  {
+    "id": "c06_confined_space_proper",
+    "file": "c06_confined_space_proper.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "CONFINED_SPACE",
+    "scene": "A confined-space entry at a manhole with a rescue tripod and winch, an attendant holding a gas detector, the entrant wearing a harness, respirator and hard hat."
+  },
+  {
+    "id": "c07_clean_factory",
+    "file": "c07_clean_factory.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "GENERAL",
+    "scene": "A clean organised factory floor with painted walkways, tools on shadow boards, an operator in safety glasses, ear protection and safety shoes at a machine with guards in place."
+  },
+  {
+    "id": "c08_good_lifting",
+    "file": "c08_good_lifting.jpg",
+    "expected_status": "COMPLIANT",
+    "expected_risk_category": "GENERAL",
+    "scene": "A warehouse worker in gloves and safety boots squatting with a straight back, bending the knees to lift a small box close to the body."
+  }
+]

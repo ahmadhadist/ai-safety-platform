@@ -7,6 +7,14 @@ BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "ehs-safety-inspections-bucket")
 LOCAL_UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/app/uploads")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000").rstrip("/")
 
+def _ext(mime_type: str) -> str:
+    m = (mime_type or "").lower()
+    for key, ext in (("png", "png"), ("mp4", "mp4"), ("webm", "webm"), ("quicktime", "mov"), ("video", "mp4")):
+        if key in m:
+            return ext
+    return "jpg"
+
+
 class StorageService:
     def __init__(self):
         try:
@@ -26,7 +34,7 @@ class StorageService:
         """Menyimpan foto pelanggaran K3 secara permanen ke GCS sebagai bukti hukum audit (Chain of Custody)."""
         if not self.enabled:
             # Save locally for demo
-            ext = "png" if "png" in mime_type.lower() else "jpg"
+            ext = _ext(mime_type)
             filename = f"{permit_code}_{uuid.uuid4().hex[:8]}.{ext}"
             filepath = os.path.join(LOCAL_UPLOADS_DIR, filename)
             with open(filepath, "wb") as f:
@@ -34,7 +42,7 @@ class StorageService:
             # Return URL to be served by FastAPI
             return f"{PUBLIC_API_BASE_URL}/uploads/{filename}"
         
-        ext = "png" if "png" in mime_type.lower() else "jpg"
+        ext = _ext(mime_type)
         filename = f"violations/{permit_code}/{severity.lower()}_{uuid.uuid4().hex[:8]}.{ext}"
         blob = self.bucket.blob(filename)
         blob.metadata = {
