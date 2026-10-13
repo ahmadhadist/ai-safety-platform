@@ -65,12 +65,32 @@ def reset_and_seed_db():
     db.add_all([template_hw, template_wah])
     db.commit()
 
+    # Remaining company policies (exported from the original development database).
+    import json, os
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_data", "policies.json")) as f:
+        exported = {t["title"]: t for t in json.load(f)}
+    for t in (template_hw, template_wah):
+        extra = exported.get(t.title) or exported.get("Working at Height (WAH)" if t.permit_type == PermitType.WORKING_AT_HEIGHT else "")
+        if extra:
+            t.dynamic_rules = {**t.dynamic_rules, "required_ppe": list(dict.fromkeys(t.dynamic_rules["required_ppe"] + extra["dynamic_rules"]["required_ppe"]))}
+    template_wah.title = "Working at Height (WAH)"
+    templates_by_title = {"Standard Hot Work": template_hw, "Working at Height (WAH)": template_wah}
+    for title, t in exported.items():
+        if title not in templates_by_title:
+            templates_by_title[title] = PermitTemplate(org_id=org.id, permit_type=PermitType(t["permit_type"]), title=title, dynamic_rules=t["dynamic_rules"])
+            db.add(templates_by_title[title])
+    db.commit()
+
     # 5. Work Permits
     now = datetime.utcnow()
     permit_1 = WorkPermit(plant_id=plant_tokyo.id, template_id=template_hw.id, permit_code="HW-2026-0891", contractor_company="Fuji Welders Ltd", contractor_lead_name="Kenji Sato", location_zone="Zone A", start_time=now - timedelta(hours=1), end_time=now + timedelta(hours=7), status=PermitStatus.APPROVED,
                           worker_manifest=[{"name": "Kenji Sato", "role": "Lead Welder", "cert": "AWS-D1.1"}, {"name": "Hiro Tanaka", "role": "Fire Watcher", "cert": "FW-JP-22"}])
     permit_2 = WorkPermit(plant_id=plant_texas.id, template_id=template_wah.id, permit_code="WAH-2026-0102", contractor_company="Lone Star Scaffolding", contractor_lead_name="Mike Johnson", location_zone="Unit 4 Reactor", start_time=now - timedelta(hours=2), end_time=now + timedelta(hours=6), status=PermitStatus.SUSPENDED)
-    db.add_all([permit_1, permit_2])
+    permit_int = WorkPermit(plant_id=plant_tokyo.id, template_id=templates_by_title["General Factory Floor"].id, permit_code="INT-TOYOTA-SHOPFLOOR",
+                            contractor_company="Internal Plant Operations (Toyota/TMMIN)", contractor_lead_name="Budi Santoso (Supervisor Line 1)",
+                            location_zone="Plant 1 - Stamping & Assembly Line", start_time=now - timedelta(days=1), end_time=now + timedelta(days=90),
+                            status=PermitStatus.APPROVED, worker_manifest=[{"name": "Agus Setiawan", "badge_id": "T-8821"}, {"name": "Dedi Pratama", "badge_id": "T-8822"}])
+    db.add_all([permit_1, permit_2, permit_int])
     db.commit()
 
     # 6. Safety Audits
