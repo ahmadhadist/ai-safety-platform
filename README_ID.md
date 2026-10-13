@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Web-Next.js%2014-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![SwiftUI](https://img.shields.io/badge/Mobile-SwiftUI%20(iOS)-F05138?style=for-the-badge&logo=swift)](https://developer.apple.com/xcode/swiftui/)
-[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Gemini%201.5%20Flash-4285F4?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
+[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Gemini%203.6%20Flash-4285F4?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2015-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org)
 
 > **Pilihan Bahasa:** [English](README.md) | 🇮🇩 **Bahasa Indonesia**
@@ -14,7 +14,7 @@
 ## 📌 Ringkasan Eksekutif
 
 **EHS Safety Platform** adalah ekosistem keselamatan kerja (K3 / *Environment, Health, and Safety*) tingkat *Enterprise* bertenaga kecerdasan buatan (AI). Platform ini dirancang untuk menyelesaikan celah buta (*blind spots*) pengawasan keselamatan kerja di pabrik manufaktur dan proyek konstruksi berat melalui kombinasi:
-1. **Analisis Multimodal AI (Suara & Penglihatan Komputer)** menggunakan Google Gemini 1.5 Flash secara *real-time*.
+1. **Analisis Multimodal AI (Suara & Penglihatan Komputer)** menggunakan Google Gemini 3.x Flash secara *real-time*.
 2. **Digital Work Permit (E-Permit) & Pelacakan Manifest Pekerja** (Konsep apel presensi harian *Denwacho*).
 3. **Sistem Eskalasi Ganda Instan** (*Dual-Alert*) melalui Bot Telegram dan WhatsApp.
 4. **AI Co-Pilot & Buku Saku Lapangan Interaktif** untuk tanya jawab SOP dan pertolongan pertama secara dinamis.
@@ -48,7 +48,7 @@ graph TD
     end
 
     subgraph Kecerdasan & Notifikasi [Layanan AI & Notifikasi]
-        FastAPI -->|Audio & Vision Multimodal| Gemini[Google Gemini 1.5 Flash]
+        FastAPI -->|Audio & Vision Multimodal| Gemini[Google Gemini 3.x Flash]
         FastAPI -->|Peringatan Pelanggaran Kritis| Telegram[Telegram Bot API]
         FastAPI -->|Eskalasi Otomatis| WhatsApp[Gateway WhatsApp]
     end
@@ -60,7 +60,7 @@ graph TD
 
 ### 1. 🎙️ Multimodal AI Voice SOS (Aplikasi iOS Native)
 * **Pelaporan Tanpa Hambatan (Zero-Friction):** Pekerja tidak perlu mengetik. Cukup tekan dan tahan tombol rekam, lalu laporkan insiden secara lisan (Contoh: *"Ada desisan gas dan bau menyengat di dekat Valve C, pekerja mulai pusing"*).
-* **Pemrosesan Suara oleh Gemini 1.5 Flash:**
+* **Pemrosesan Suara oleh Gemini 3.x Flash:**
   * `incident_title`: Judul ringkas insiden.
   * `hazard_level`: Penentuan tingkat bahaya otomatis (`NONE`, `LOW`, `MEDIUM`, `CRITICAL`).
   * `identified_location`: Deteksi lokasi dari konteks pembicaraan.
@@ -120,7 +120,7 @@ sequenceDiagram
 
 | Lapisan | Teknologi | Pustaka / Komponen Kunci |
 |---------|-----------|--------------------------|
-| **AI / Machine Learning** | Google Gemini 1.5 Flash | `google-genai`, Multimodal Vision & Audio API |
+| **AI / Machine Learning** | Google Gemini 3.x Flash | `google-genai`, Multimodal Vision & Audio API |
 | **Backend API** | Python 3.11 + FastAPI | Uvicorn, SQLAlchemy ORM, Pydantic v2, PyJWT, Passlib (bcrypt) |
 | **Database** | PostgreSQL 15 | Native `JSONB`, pg8000 driver |
 | **Web Dashboard** | Next.js 14 (App Router) | React, TypeScript, Tailwind CSS, Lucide Icons |

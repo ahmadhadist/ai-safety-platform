@@ -3,6 +3,9 @@ import AVFoundation
 import Combine
 
 // MARK: - App State
+// Point this at your Cloud Run backend URL (or LAN IP during local development).
+let API_BASE = "http://192.168.0.14:8000/api/v1"
+
 class AppState: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var userName: String = "User"
@@ -80,7 +83,7 @@ struct LoginView: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.0.14:8000/api/v1/auth/login") else { return }
+        guard let url = URL(string: API_BASE + "/auth/login") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         let bodyString = "username=\(email)&password=\(password)"
@@ -208,6 +211,7 @@ struct Permit: Identifiable, Decodable {
 }
 
 struct EPermitView: View {
+    @EnvironmentObject var appState: AppState
     @State private var permits: [Permit] = []
     @State private var isLoading = true
     
@@ -241,8 +245,10 @@ struct EPermitView: View {
     }
     
     func fetchPermits() {
-        guard let url = URL(string: "http://192.168.0.14:8000/api/v1/permits") else { return }
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        guard let url = URL(string: API_BASE + "/permits") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(appState.token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 self.isLoading = false
                 if let data = data {
@@ -259,6 +265,7 @@ struct EPermitView: View {
 
 // MARK: - 3. Voice Report View
 struct VoiceReportView: View {
+    @EnvironmentObject var appState: AppState
     @State private var isRecording = false
     @State private var transcript = ""
     @State private var showResult = false
@@ -328,9 +335,10 @@ struct VoiceReportView: View {
         if let url = recordingURL { uploadAudio(fileURL: url) }
     }
     func uploadAudio(fileURL: URL) {
-        guard let url = URL(string: "http://192.168.0.14:8000/api/v1/mobile/voice-report") else { return }
+        guard let url = URL(string: API_BASE + "/mobile/voice-report") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.setValue("Bearer \(appState.token)", forHTTPHeaderField: "Authorization")
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         var body = Data()
@@ -360,6 +368,7 @@ struct ChatMessage: Identifiable {
 }
 
 struct FieldGuideView: View {
+    @EnvironmentObject var appState: AppState
     @State private var messages: [ChatMessage] = [
         ChatMessage(text: "Halo! Saya AI Co-Pilot K3 Anda. Ada yang bisa saya bantu terkait SOP atau keamanan?", isUser: false)
     ]
@@ -421,10 +430,11 @@ struct FieldGuideView: View {
         inputText = ""
         isTyping = true
         
-        guard let url = URL(string: "http://192.168.0.14:8000/api/v1/mobile/field-guide") else { return }
+        guard let url = URL(string: API_BASE + "/mobile/field-guide") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(appState.token)", forHTTPHeaderField: "Authorization")
         let json: [String: Any] = ["message": userText]
         request.httpBody = try? JSONSerialization.data(withJSONObject: json)
         

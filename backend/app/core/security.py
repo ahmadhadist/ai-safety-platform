@@ -1,9 +1,10 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "HACKATHON_SUPER_SECRET_KEY_REPLACE_IN_PROD"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "HACKATHON_SUPER_SECRET_KEY_REPLACE_IN_PROD")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days validity for hackathon
 

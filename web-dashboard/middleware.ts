@@ -21,5 +21,5 @@ export function middleware(request: NextRequest) {
 
 // Only run middleware on protected routes and login
 export const config = {
-  matcher: ['/dashboard/:path*', '/sandbox/:path*', '/permits/:path*', '/policies/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/sandbox/:path*', '/permits/:path*', '/policies/:path*', '/copilot/:path*', '/team/:path*', '/audits/:path*', '/login'],
 }

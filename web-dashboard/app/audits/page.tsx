@@ -2,13 +2,9 @@
 import { useState, useEffect } from "react";
 import { History, Eye, ShieldAlert, CheckCircle, AlertTriangle, AlertCircle, Camera, HeartPulse, Sun, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
+import EvidenceViewer, { GroundedObservation } from "@/components/EvidenceViewer";
 
-type Observation = {
-  category: string;
-  description: string;
-  is_infraction: boolean;
-  confidence: number;
-};
+type Observation = GroundedObservation;
 
 type AuditItem = {
   id: string;
@@ -28,6 +24,7 @@ type AuditItem = {
     enforcement_action?: string;
     recommendation?: string;
     data_retention_policy?: string;
+    model_used?: string;
     stop6_category?: string;
     health_evaluation?: {
       lighting_condition?: string;
@@ -192,7 +189,7 @@ export default function AuditsPage() {
                 <Camera className="w-5 h-5 text-slate-400" /> Evidence Photo
               </h3>
               {selectedAudit.photo_url ? (
-                <img src={selectedAudit.photo_url} alt="Audit Evidence" className="w-full h-auto rounded-lg shadow-lg border border-slate-700" />
+                <EvidenceViewer src={selectedAudit.photo_url} observations={selectedAudit.ai_raw_json.observations || []} />
               ) : (
                 <div className="w-full aspect-video bg-slate-900 rounded-lg border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-500">
                   <ShieldAlert className="w-12 h-12 mb-2 text-emerald-500/50" />

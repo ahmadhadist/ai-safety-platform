@@ -1,0 +1,9 @@
+# Builds the Next.js dashboard with the API URL baked in (NEXT_PUBLIC_* is inlined at build time).
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_IMAGE}", "--build-arg", "NEXT_PUBLIC_API_URL=${_API_URL}", "."]
+images:
+  - "${_IMAGE}"
+substitutions:
+  _IMAGE: ""
+  _API_URL: ""

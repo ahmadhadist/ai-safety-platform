@@ -6,17 +6,53 @@ class Observation(BaseModel):
     description: str
     is_infraction: bool
     confidence: float = Field(..., ge=0.0, le=1.0)
+    box_2d: Optional[List[int]] = Field(
+        None, description="Bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 locating the person/object this observation refers to."
+    )
 
-class AuditResult(BaseModel):
+class HealthEvaluation(BaseModel):
+    lighting_condition: Literal["ADEQUATE", "MARGINAL", "INSUFFICIENT_LIGHTING"]
+    lighting_notes: str
+    ergonomics_status: Literal["SAFE_POSTURE", "ERGONOMIC_STRAIN_RISK", "NOT_APPLICABLE"]
+    ergonomics_notes: str
+
+class SafetyPerimeterEvaluation(BaseModel):
+    housekeeping_5s_status: Literal["CLEAN_AND_SAFE", "CLUTTERED_TRIPPING_HAZARD", "NOT_APPLICABLE"]
+    housekeeping_notes: str
+    barrier_and_apar_status: Literal["SECURE_PERIMETER", "MISSING_BARRIERS", "NOT_APPLICABLE"]
+    perimeter_notes: str
+
+Stop6Category = Literal[
+    "STOP_6_1_APPARATUS", "STOP_6_2_HEAVY_OBJECTS", "STOP_6_3_VEHICLES", "STOP_6_4_DROP_FALL",
+    "STOP_6_5_ELECTRIC_SHOCK", "STOP_6_6_HEAT_HAZARDS", "STOP_6_GENERAL",
+]
+
+class GeminiAuditOutput(BaseModel):
+    """Exact schema Gemini is constrained to via response_schema (structured output)."""
     status: Literal["COMPLIANT", "NON_COMPLIANT"]
     severity: Literal["NONE", "LOW", "MEDIUM", "CRITICAL"]
     summary_headline: str
+    worker_count_detected: int = Field(..., ge=0, description="Number of people visible in the image.")
+    stop6_category: Stop6Category
+    health_evaluation: HealthEvaluation
+    safety_perimeter_evaluation: SafetyPerimeterEvaluation
     observations: List[Observation]
     enforcement_action: Literal["NO_ACTION", "ISSUE_WARNING", "SUSPEND_PERMIT"]
     recommendation: str
-    stop6_category: Optional[str] = "GENERAL_SAFETY"
+
+class AuditResult(GeminiAuditOutput):
+    """Gemini output enriched with server-side facts (model provenance, manifest reconciliation, actions taken)."""
+    stop6_category: Optional[str] = "STOP_6_GENERAL"
+    worker_count_detected: Optional[int] = None
     health_evaluation: Optional[dict] = None
     safety_perimeter_evaluation: Optional[dict] = None
+    manifest_worker_count: Optional[int] = None
+    headcount_mismatch: bool = False
+    model_used: Optional[str] = None
+    latency_ms: Optional[int] = None
+    data_retention_policy: Optional[str] = None
+    photo_url: Optional[str] = None
+    alerts_dispatched: List[str] = []
 
 class PermitResponse(BaseModel):
     id: Any
@@ -65,8 +101,14 @@ class ChatRequest(BaseModel):
     message: str
     language: Optional[str] = "id"
 
+class ToolCallTrace(BaseModel):
+    name: str
+    args: dict = {}
+
 class ChatResponse(BaseModel):
     reply: str
+    tool_calls: List[ToolCallTrace] = []
+    model_used: Optional[str] = None
 
 class VoiceReportResult(BaseModel):
     title: str

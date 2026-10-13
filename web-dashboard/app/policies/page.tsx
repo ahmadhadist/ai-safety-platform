@@ -25,7 +25,9 @@ export default function PoliciesPage() {
       const res = await api.post("/policies/upload-sop", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-      alert("SOP Document uploaded and extracted successfully!");
+      alert(res.data?.dynamic_rules?.compiled_by_ai
+        ? `Gemini compiled "${res.data.title}" into ${res.data.dynamic_rules.required_ppe?.length ?? 0} PPE rules, ${res.data.dynamic_rules.environmental_prerequisites?.length ?? 0} prerequisites and ${res.data.dynamic_rules.forbidden_hazards?.length ?? 0} forbidden hazards. It is now enforceable in the AI Sandbox.`
+        : "SOP uploaded. Text extracted for the Co-Pilot (AI rule compilation unavailable right now).");
       fetchTemplates();
     } catch (error) {
       console.error(error);

@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory, HeartPulse, Sun, ShieldAlert, ShieldCheck } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertOctagon, Shield, Factory, HeartPulse, Sun, ShieldAlert, ShieldCheck, Users, Cpu, BellRing } from "lucide-react";
 import { api } from "@/lib/api";
+import EvidenceViewer from "@/components/EvidenceViewer";
 
 export default function SandboxPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -9,6 +10,8 @@ export default function SandboxPage() {
   const [permitId, setPermitId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   // IoT Sensor Simulator
   const [enableIoT, setEnableIoT] = useState(false);
@@ -35,11 +38,20 @@ export default function SandboxPage() {
 
   const selectedPermit = permits.find((p) => p.id === permitId);
 
+  useEffect(() => {
+    if (!file) return setPreviewUrl(null);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !permitId) return;
 
     setLoading(true);
+    setError("");
+    setResult(null);
     const formData = new FormData();
     formData.append("image", file);
     formData.append("permit_id", permitId);
@@ -54,9 +66,10 @@ export default function SandboxPage() {
         headers: { "Content-Type": "multipart/form-data" }
       });
       setResult(res.data);
-    } catch (err) {
+      fetchPermits();
+    } catch (err: any) {
       console.error(err);
-      alert("Analysis failed. Ensure backend is running and authenticated.");
+      setError(err?.response?.data?.detail || "Analysis failed. Ensure backend is running and authenticated.");
     }
     setLoading(false);
   };
@@ -67,7 +80,7 @@ export default function SandboxPage() {
         <div>
           <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
             <Factory className="text-blue-600" size={32} />
-            CCTV AI Inspection Sandbox Field Inspection AI Sandbox
+            Field Inspection AI Sandbox
           </h2>
           <p className="text-slate-500 mt-1">
             Audit keselamatan kerja real-time berbasis Google Gemini Multimodal Vision untuk memvalidasi kepatuhan APD dan mendeteksi potensi bahaya pada <b>Lini Produksi Pabrik (Toyota Shopfloor)</b> maupun <b>Zona Kerja Kontraktor Eksternal</b>.
@@ -196,7 +209,7 @@ export default function SandboxPage() {
         </div>
 
         {/* Results Panel */}
-        <div className="bg-slate-900 text-white p-6 rounded-xl shadow-sm h-[600px] overflow-auto flex flex-col justify-between">
+        <div className="bg-slate-900 text-white p-6 rounded-xl shadow-sm min-h-[600px] max-h-[calc(100vh-8rem)] overflow-auto flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold flex items-center gap-2">
@@ -214,7 +227,15 @@ export default function SandboxPage() {
               </h3>
             </div>
 
-            {!result && !loading && (
+            {error && !loading && (
+              <div className="p-4 bg-red-950/60 border border-red-800 rounded-lg text-sm text-red-200 space-y-1">
+                <p className="font-bold">No verdict recorded</p>
+                <p className="text-xs text-red-300">{error}</p>
+                <p className="text-xs text-red-400">Fail-safe by design: the permit was not changed and nothing was stored.</p>
+              </div>
+            )}
+
+            {!result && !loading && !error && (
               <div className="text-slate-400 text-sm italic py-20 text-center">
                 Pilih zona target dan unggah foto CCTV di sebelah kiri untuk melihat penalaran AI Gemini.
               </div>
@@ -235,6 +256,38 @@ export default function SandboxPage() {
                   <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Ringkasan AI:</span>
                   <p className="text-sm font-medium text-slate-200 mt-1">{result.summary_headline}</p>
                 </div>
+
+                {/* Visual grounding: Gemini bounding boxes over the evidence */}
+                {previewUrl && <EvidenceViewer src={previewUrl} observations={result.observations || []} />}
+
+                {/* Provenance & escalation strip */}
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  {result.model_used && (
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-950/70 border border-blue-800 text-blue-300">
+                      <Cpu size={12} /> {result.model_used}{result.latency_ms ? ` · ${(result.latency_ms / 1000).toFixed(1)}s` : ""}
+                    </span>
+                  )}
+                  {result.data_retention_policy && (
+                    <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">{result.data_retention_policy}</span>
+                  )}
+                  {result.status === "NON_COMPLIANT" && (
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-950/70 border border-amber-800 text-amber-300">
+                      <BellRing size={12} />
+                      {result.alerts_dispatched?.length ? `Alert sent: ${result.alerts_dispatched.join(" + ")}` : "Alerts: no channel configured"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Denwacho headcount reconciliation */}
+                {result.worker_count_detected != null && (result.manifest_worker_count ?? 0) > 0 && (
+                  <div className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${result.headcount_mismatch ? "bg-red-950/50 border-red-800 text-red-300" : "bg-slate-800/80 border-slate-700 text-slate-300"}`}>
+                    <Users size={14} />
+                    <span>
+                      <b>Manifest check (Denwacho):</b> {result.worker_count_detected} worker(s) on camera vs {result.manifest_worker_count} on permit manifest
+                      {result.headcount_mismatch ? " — UNREGISTERED WORKER ON SITE" : " — OK"}
+                    </span>
+                  </div>
+                )}
 
                 {/* Status & Enforcement Action Banner */}
                 <div className="grid grid-cols-2 gap-3">
@@ -373,8 +426,8 @@ export default function SandboxPage() {
           </div>
 
           <div className="text-[11px] text-slate-500 border-t border-slate-800 pt-3 mt-4 flex justify-between">
-            <span>Powered by Google Gemini 3.6 Flash</span>
-            <span>Zero-Shot Spatial Reasoning</span>
+            <span>Powered by Google Gemini{result?.model_used ? ` (${result.model_used})` : ""}</span>
+            <span>Structured output · Visual grounding</span>
           </div>
         </div>
       </div>

@@ -1,75 +1,92 @@
+import html
 import os
+from typing import Optional
+
 import requests
+
+TIMEOUT_S = 10
+
 
 class NotificationService:
     def __init__(self):
-        # Fallback ke konfigurasi sistem jika .env belum diisi
         self.fonnte_token = os.environ.get("FONNTE_TOKEN")
         self.target_phone = os.environ.get("WA_TARGET_PHONE")
+        self.telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        self.telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 
-    def send_whatsapp_alert(self, permit_code: str, severity: str, violations_summary: str, photo_url: str = None):
-        if not self.fonnte_token or not self.target_phone:
-            print("Peringatan: FONNTE_TOKEN atau WA_TARGET_PHONE kosong. Lewati notifikasi WA.")
+    @staticmethod
+    def _status_line(enforcement_action: str) -> str:
+        if enforcement_action == "SUSPEND_PERMIT":
+            return "⛔ IZIN KERJA DIBEKUKAN / PERMIT SUSPENDED"
+        return "⚠️ PERINGATAN & COACHING / WARNING ISSUED"
+
+    def send_whatsapp_alert(self, permit_code: str, severity: str, enforcement_action: str, violations_summary: str, photo_url: Optional[str] = None) -> bool:
+        if not self.fonnte_token or not self.target_phone or "your_" in self.fonnte_token:
+            print("FONNTE_TOKEN / WA_TARGET_PHONE not set. Skipping WhatsApp alert.")
             return False
 
         message = (
-            f"🚨 *[URGENT] PELANGGARAN K3 KRITIKAL* 🚨\n\n"
+            f"🚨 *[K3 ALERT] {severity}* 🚨\n\n"
             f"Izin Kerja: *{permit_code}*\n"
-            f"Status K3: ⛔ *{severity} (IZIN KERJA DIBEKUKAN)*\n\n"
-            f"*Detail Temuan AI Gemini:*\n{violations_summary}\n\n"
-            f"Harap segera tindak lanjuti ke lokasi lantai pabrik."
+            f"Status: *{self._status_line(enforcement_action)}*\n\n"
+            f"*Temuan AI Gemini:*\n{violations_summary}\n\n"
+            f"Harap segera tindak lanjuti ke lokasi."
         )
-        
-        payload = {
-            'target': self.target_phone,
-            'message': message,
-            'countryCode': '62'
-        }
-        
-        if photo_url:
-            payload['url'] = photo_url
-
-        headers = {
-            'Authorization': self.fonnte_token
-        }
+        payload = {"target": self.target_phone, "message": message, "countryCode": "62"}
+        if photo_url and photo_url.startswith("https://"):
+            payload["url"] = photo_url
 
         try:
-            response = requests.post("https://api.fonnte.com/send", data=payload, headers=headers)
-            print(f"WA Alert Status: {response.status_code} - {response.text}")
-            return True
+            response = requests.post("https://api.fonnte.com/send", data=payload, headers={"Authorization": self.fonnte_token}, timeout=TIMEOUT_S)
+            print(f"WA Alert Status: {response.status_code}")
+            return response.ok
         except Exception as e:
-            print(f"Gagal mengirim notifikasi WA via Fonnte: {e}")
+            print(f"Failed to send WhatsApp alert via Fonnte: {e}")
             return False
 
-    def send_telegram_alert(self, permit_code: str, severity: str, violations_summary: str, photo_url: str = None):
-        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-        chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-        
-        if not bot_token or not chat_id or "masukkan" in bot_token:
-            print("Peringatan: Kredensial Telegram kosong. Lewati notifikasi Telegram.")
+    def send_telegram_alert(self, permit_code: str, severity: str, enforcement_action: str, violations_summary: str, image_bytes: Optional[bytes] = None) -> bool:
+        if not self.telegram_token or not self.telegram_chat_id or "your_" in self.telegram_token:
+            print("Telegram credentials not set. Skipping Telegram alert.")
             return False
 
+        # HTML parse mode + escaping: AI text with '_' or '*' would break Telegram's legacy Markdown parser.
         message = (
-            f"🚨 *[URGENT] PELANGGARAN K3 KRITIKAL* 🚨\n\n"
-            f"📝 *Izin Kerja:* `{permit_code}`\n"
-            f"⛔ *Status:* {severity} (IZIN DIBEKUKAN)\n\n"
-            f"*🔍 Detail Temuan AI:*\n{violations_summary}\n\n"
-            f"⚠️ Harap segera buka Dashboard K3."
+            f"🚨 <b>[K3 ALERT] {html.escape(severity)}</b>\n\n"
+            f"📝 <b>Permit:</b> <code>{html.escape(permit_code)}</code>\n"
+            f"<b>Status:</b> {self._status_line(enforcement_action)}\n\n"
+            f"<b>🔍 Temuan AI / AI Findings:</b>\n{html.escape(violations_summary)}"
         )
-
+        base = f"https://api.telegram.org/bot{self.telegram_token}"
         try:
-            if photo_url and photo_url.startswith("http"):
-                # Kirim foto dengan caption
-                url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
-                payload = {"chat_id": chat_id, "photo": photo_url, "caption": message, "parse_mode": "Markdown"}
+            if image_bytes:
+                # Upload the evidence bytes directly so it works even when the backend is not publicly reachable.
+                response = requests.post(
+                    f"{base}/sendPhoto",
+                    data={"chat_id": self.telegram_chat_id, "caption": message[:1024], "parse_mode": "HTML"},
+                    files={"photo": ("evidence.jpg", image_bytes)},
+                    timeout=TIMEOUT_S,
+                )
             else:
-                # Kirim pesan teks saja
-                url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
-                
-            response = requests.post(url, json=payload)
-            print(f"Telegram Alert Status: {response.status_code} - {response.text}")
-            return True
+                response = requests.post(
+                    f"{base}/sendMessage",
+                    json={"chat_id": self.telegram_chat_id, "text": message, "parse_mode": "HTML"},
+                    timeout=TIMEOUT_S,
+                )
+            print(f"Telegram Alert Status: {response.status_code}")
+            return response.ok
         except Exception as e:
-            print(f"Gagal mengirim notifikasi Telegram: {e}")
+            print(f"Failed to send Telegram alert: {e}")
             return False
+
+    def dispatch_violation_alerts(self, permit_code: str, severity: str, enforcement_action: str, violations_summary: str, photo_url: Optional[str], image_bytes: Optional[bytes]) -> None:
+        """Fan out to every configured channel. Runs as a FastAPI background task so the inspector isn't kept waiting."""
+        self.send_telegram_alert(permit_code, severity, enforcement_action, violations_summary, image_bytes)
+        self.send_whatsapp_alert(permit_code, severity, enforcement_action, violations_summary, photo_url)
+
+    def configured_channels(self) -> list:
+        channels = []
+        if self.telegram_token and self.telegram_chat_id and "your_" not in self.telegram_token:
+            channels.append("TELEGRAM")
+        if self.fonnte_token and self.target_phone and "your_" not in self.fonnte_token:
+            channels.append("WHATSAPP")
+        return channels

@@ -1,12 +1,16 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, ShieldCheck, Sparkles, AlertTriangle, Copy, Check } from "lucide-react";
+import { Send, Bot, User, ShieldCheck, Sparkles, AlertTriangle, Copy, Check, Database } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { api } from "@/lib/api";
+
+type ToolCall = { name: string; args: Record<string, unknown> };
 
 type Message = {
   role: "user" | "ai";
   content: string;
+  toolCalls?: ToolCall[];
+  model?: string;
 };
 
 
@@ -86,7 +90,8 @@ export default function CopilotPage() {
     "🛠️ PPE Standards for Working at Height (WAH)",
     "🚨 Check suspended work permits today",
     "🧪 Emergency procedure for ammonia chemical spill",
-    "📋 Daily PPE rules for internal Toyota assembly line"
+    "📋 Daily PPE rules for internal Toyota assembly line",
+    "📈 Which contractor is our biggest risk in the last 14 days?"
   ];
 
   useEffect(() => {
@@ -112,7 +117,7 @@ export default function CopilotPage() {
         message: textToSend.trim(),
         language: language 
       });
-      setMessages(prev => [...prev, { role: "ai", content: res.data.reply }]);
+      setMessages(prev => [...prev, { role: "ai", content: res.data.reply, toolCalls: res.data.tool_calls, model: res.data.model_used }]);
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { role: "ai", content: "⚠️ Maaf, terjadi kendala saat menghubungi server AI." }]);
@@ -174,6 +179,19 @@ export default function CopilotPage() {
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 ) : (
                   <div className="space-y-3 prose-sm max-w-none text-slate-700">
+                    {/* Agent reasoning trail: which live-database tools Gemini decided to call */}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-slate-100">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Agent queried</span>
+                        {msg.toolCalls.map((tc, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            <Database size={11} />
+                            {tc.name}({Object.entries(tc.args || {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ")})
+                          </span>
+                        ))}
+                        {msg.model && <span className="text-[10px] text-slate-400 ml-auto">{msg.model}</span>}
+                      </div>
+                    )}
                     <TypewriterMarkdown 
                       content={msg.content} 
                       onComplete={() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }} 

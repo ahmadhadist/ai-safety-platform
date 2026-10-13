@@ -67,7 +67,8 @@ def reset_and_seed_db():
 
     # 5. Work Permits
     now = datetime.utcnow()
-    permit_1 = WorkPermit(plant_id=plant_tokyo.id, template_id=template_hw.id, permit_code="HW-2026-0891", contractor_company="Fuji Welders Ltd", contractor_lead_name="Kenji Sato", location_zone="Zone A", start_time=now - timedelta(hours=1), end_time=now + timedelta(hours=7), status=PermitStatus.APPROVED)
+    permit_1 = WorkPermit(plant_id=plant_tokyo.id, template_id=template_hw.id, permit_code="HW-2026-0891", contractor_company="Fuji Welders Ltd", contractor_lead_name="Kenji Sato", location_zone="Zone A", start_time=now - timedelta(hours=1), end_time=now + timedelta(hours=7), status=PermitStatus.APPROVED,
+                          worker_manifest=[{"name": "Kenji Sato", "role": "Lead Welder", "cert": "AWS-D1.1"}, {"name": "Hiro Tanaka", "role": "Fire Watcher", "cert": "FW-JP-22"}])
     permit_2 = WorkPermit(plant_id=plant_texas.id, template_id=template_wah.id, permit_code="WAH-2026-0102", contractor_company="Lone Star Scaffolding", contractor_lead_name="Mike Johnson", location_zone="Unit 4 Reactor", start_time=now - timedelta(hours=2), end_time=now + timedelta(hours=6), status=PermitStatus.SUSPENDED)
     db.add_all([permit_1, permit_2])
     db.commit()
@@ -80,6 +81,38 @@ def reset_and_seed_db():
         compliance_status=ComplianceStatus.NON_COMPLIANT, severity_level=SeverityLevel.CRITICAL, auto_action_taken=True
     )
     db.add(audit_1)
+    db.commit()
+
+    # 7. Two weeks of AI audit history so dashboards and the Co-Pilot's trend tools have something to analyse.
+    history = [
+        (13, permit_1, "NON_COMPLIANT", "MEDIUM", "STOP_6_6_HEAT_HAZARDS", "FIRE_HAZARD", "Combustible cardboard within 10m of welding sparks."),
+        (12, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
+        (11, permit_2, "NON_COMPLIANT", "CRITICAL", "STOP_6_4_DROP_FALL", "PPE", "Worker at 6m height without full body harness."),
+        (10, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
+        (9, permit_2, "NON_COMPLIANT", "MEDIUM", "STOP_6_4_DROP_FALL", "UNSAFE_CONDITION", "Scaffold missing toe board on upper deck."),
+        (7, permit_1, "NON_COMPLIANT", "LOW", "STOP_6_6_HEAT_HAZARDS", "PPE", "Fire watcher not wearing safety glasses."),
+        (6, permit_2, "COMPLIANT", "NONE", "STOP_6_4_DROP_FALL", None, None),
+        (5, permit_1, "NON_COMPLIANT", "CRITICAL", "STOP_6_6_HEAT_HAZARDS", "FIRE_HAZARD", "No fire extinguisher (APAR) within reach of hot work."),
+        (4, permit_2, "NON_COMPLIANT", "MEDIUM", "STOP_6_4_DROP_FALL", "PPE", "Hard hat chin strap not fastened at height."),
+        (3, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
+        (2, permit_2, "NON_COMPLIANT", "CRITICAL", "STOP_6_4_DROP_FALL", "UNSAFE_ACTION", "Lanyard unhooked while moving between scaffold bays."),
+        (1, permit_1, "COMPLIANT", "NONE", "STOP_6_6_HEAT_HAZARDS", None, None),
+    ]
+    for days_ago, permit, status, severity, stop6, category, finding in history:
+        bad = status == "NON_COMPLIANT"
+        action = "SUSPEND_PERMIT" if severity == "CRITICAL" else ("ISSUE_WARNING" if bad else "NO_ACTION")
+        db.add(SafetyAudit(
+            work_permit_id=permit.id, inspector_id=str(inspector_user.id), photo_url=None,
+            compliance_status=ComplianceStatus(status), severity_level=SeverityLevel(severity), auto_action_taken=bad,
+            created_at=now - timedelta(days=days_ago, hours=days_ago % 5),
+            ai_raw_json={
+                "status": status, "severity": severity, "stop6_category": stop6, "enforcement_action": action,
+                "summary_headline": finding or "All required PPE and controls in place.",
+                "observations": [{"category": category, "description": finding, "is_infraction": True, "confidence": 0.93}] if bad else [],
+                "recommendation": "Stop work and correct the finding before resuming." if bad else "Continue work.",
+                "model_used": "seed-data",
+            },
+        ))
     db.commit()
 
     print("Seed complete! Added 'admin@globalmfg.com' and 'inspector@globalmfg.com'.")

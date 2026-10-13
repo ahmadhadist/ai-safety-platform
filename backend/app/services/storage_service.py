@@ -4,12 +4,15 @@ from google.cloud import storage
 
 BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "ehs-safety-inspections-bucket")
 
-LOCAL_UPLOADS_DIR = "/app/uploads"
+LOCAL_UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/app/uploads")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000").rstrip("/")
 
 class StorageService:
     def __init__(self):
         try:
             # Requires GOOGLE_APPLICATION_CREDENTIALS in env
+            if not os.getenv("GCS_BUCKET_NAME"):
+                raise RuntimeError("GCS_BUCKET_NAME not set")
             self.client = storage.Client()
             self.bucket = self.client.bucket(BUCKET_NAME)
             self.enabled = True
@@ -29,9 +32,10 @@ class StorageService:
             with open(filepath, "wb") as f:
                 f.write(image_bytes)
             # Return URL to be served by FastAPI
-            return f"http://localhost:8000/uploads/{filename}"
+            return f"{PUBLIC_API_BASE_URL}/uploads/{filename}"
         
-        filename = f"violations/{permit_code}/{severity.lower()}_{uuid.uuid4().hex[:8]}.jpg"
+        ext = "png" if "png" in mime_type.lower() else "jpg"
+        filename = f"violations/{permit_code}/{severity.lower()}_{uuid.uuid4().hex[:8]}.{ext}"
         blob = self.bucket.blob(filename)
         blob.metadata = {
             "retention_policy": "PERMANENT_LEGAL_AUDIT",
@@ -39,7 +43,17 @@ class StorageService:
             "severity": severity
         }
         blob.upload_from_string(image_bytes, content_type=mime_type)
-        return blob.public_url
+        # Bucket stays private; the API streams evidence through an unguessable URL (see /evidence route).
+        return f"{PUBLIC_API_BASE_URL}/evidence/{filename}"
+
+    def read_evidence(self, object_name: str):
+        """Return (bytes, content_type) for a stored violation photo, or None if it does not exist."""
+        if not self.enabled or not object_name.startswith("violations/"):
+            return None
+        blob = self.bucket.blob(object_name)
+        if not blob.exists():
+            return None
+        return blob.download_as_bytes(), blob.content_type or "image/jpeg"
 
     def purge_compliant_photo(self) -> None:
         """Foto aman (100% compliant) langsung di-purge dari memori RAM (Zero-Storage & Privacy-Preserved)."""

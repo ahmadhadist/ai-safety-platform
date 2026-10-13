@@ -1,11 +1,19 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { LayoutDashboard, Camera, ClipboardList, Settings, ShieldAlert, LogOut, Bot, Users, History } from "lucide-react";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [aiStatus, setAiStatus] = useState<{ available: boolean; backend: string; model_chain: string[]; evidence_storage: string } | null>(null);
+
+  useEffect(() => {
+    if (pathname === "/login") return;
+    api.get("/system/ai-status").then((res) => setAiStatus(res.data)).catch(() => setAiStatus(null));
+  }, [pathname]);
 
   if (pathname === "/login") {
     return <>{children}</>;
@@ -67,6 +75,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <LogOut size={20} />
             <span>Sign Out</span>
           </button>
+          {aiStatus && (
+            <div className="mt-4 p-2.5 rounded-lg bg-slate-800/60 border border-slate-700 text-[11px] space-y-0.5">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-200">
+                <span className={`w-2 h-2 rounded-full ${aiStatus.available ? "bg-emerald-400" : "bg-red-500"}`} />
+                {aiStatus.backend}
+              </div>
+              <div className="text-slate-400 font-mono truncate" title={aiStatus.model_chain.join(" → ")}>{aiStatus.model_chain[0]}</div>
+              <div className="text-slate-500">Evidence: {aiStatus.evidence_storage}</div>
+            </div>
+          )}
           <div className="mt-4 text-xs text-slate-500 text-center">
             AI Builder Cup 2026 Edition
           </div>
