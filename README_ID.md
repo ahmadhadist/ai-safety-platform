@@ -22,7 +22,7 @@ eskalasi dalam hitungan detik. Wajah diblur dan rekaman pekerjaan yang aman tida
 | **Review video CCTV** | Upload klip, dapatkan timeline pelanggaran dengan timestamp | Native video understanding |
 | **Auto-detect policy** | Gemini mengenali aktivitas dan memilih policy yang cocok | Reasoning |
 | **SOP PDF → aturan** | Upload SOP, Gemini menyusun aturan APD, prasyarat, dan bahaya terlarang | Native PDF |
-| **Eskalasi instan** | Stop work / peringatan, alert Telegram + WhatsApp dengan foto bukti | — |
+| **Eskalasi instan** | Stop work / peringatan, alert WhatsApp dengan foto bukti | — |
 | **Laporan insiden 1 klik** | Analisis 5-Why dan tindakan korektif sesuai hierarki kontrol, bisa dicetak PDF | Structured generation |
 | **EHS Co-Pilot (agent)** | Tanya "area mana paling berisiko?"; agent menelusuri database dan menunjukkan tool yang dipakai | Function calling |
 | **Dashboard risiko** | Jumlah inspeksi, tingkat kepatuhan, tren 14 hari, kategori risiko fatal, lokasi rawan | — |

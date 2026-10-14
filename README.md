@@ -31,7 +31,7 @@ visible unsafe acts and conditions: a missing harness, a pedestrian in a forklif
 | **CCTV video review** | Upload a clip; get a timestamped violation timeline and jump to each moment | Native video understanding |
 | **Policy auto-detection** | Gemini identifies the activity (e.g. hot work, working at height) and picks the matching company policy | Reasoning over policy list |
 | **SOP → enforceable rules** | Upload an SOP PDF; Gemini compiles PPE, prerequisites, forbidden hazards and limits into a policy | Native PDF understanding |
-| **Instant escalation** | Stop-work order or warning, Telegram + WhatsApp alert with the evidence photo | — |
+| **Instant escalation** | Stop-work order or warning, WhatsApp alert with the evidence photo | — |
 | **One-click incident report** | 5-Whys root cause and corrective actions ranked by the hierarchy of controls, printable as PDF | Structured generation |
 | **Agentic EHS Co-Pilot** | Ask "Which area is our biggest risk this fortnight?"; the agent queries the live database and shows which tools it used | Function calling |
 | **Risk dashboard** | Inspections, compliance rate, 14-day trend, fatal-risk categories and hotspot locations | — |
@@ -54,7 +54,7 @@ flowchart LR
     A -->|photo · video · PDF| G[Vertex AI<br/>Gemini 3.x Flash]
     A -->|Direct VPC egress| DB[(PostgreSQL<br/>Compute Engine)]
     A -->|faces blurred| S[(Cloud Storage<br/>private evidence)]
-    A --> N[Telegram / WhatsApp<br/>alerts]
+    A --> N[WhatsApp<br/>alerts]
     SM[Secret Manager] -.-> A
 ```
 

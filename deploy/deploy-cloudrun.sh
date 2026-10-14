@@ -6,7 +6,7 @@
 #   Cloud Storage (private violation evidence)
 #
 # Usage:  PROJECT_ID=my-project ./deploy/deploy-cloudrun.sh
-# Reads optional TELEGRAM_* / FONNTE_TOKEN / WA_TARGET_PHONE from backend/.env.
+# Reads optional FONNTE_TOKEN / WA_TARGET_PHONE (WhatsApp alerts) from backend/.env.
 # Set USE_VERTEX=false to use a Gemini API key (GEMINI_API_KEY from backend/.env) instead of Vertex AI.
 # Re-running is safe: existing resources are reused and services are redeployed.
 set -euo pipefail
@@ -101,8 +101,7 @@ DB_IP="$(gcloud compute instances describe "$DB_VM" --zone "$ZONE" --format 'val
 put_secret ehs-database-url "postgresql+pg8000://${DB_USER}:${DB_PASSWORD}@${DB_IP}:5432/${DB_NAME}"
 
 SECRETS="DATABASE_URL=ehs-database-url:latest,JWT_SECRET_KEY=ehs-jwt-secret:latest"
-TG="$(envval TELEGRAM_BOT_TOKEN)"; FT="$(envval FONNTE_TOKEN)"
-if [ -n "$TG" ]; then put_secret ehs-telegram-token "$TG"; SECRETS="$SECRETS,TELEGRAM_BOT_TOKEN=ehs-telegram-token:latest"; fi
+FT="$(envval FONNTE_TOKEN)"
 if [ -n "$FT" ]; then put_secret ehs-fonnte-token "$FT"; SECRETS="$SECRETS,FONNTE_TOKEN=ehs-fonnte-token:latest"; fi
 ENV_VARS="GCS_BUCKET_NAME=${BUCKET},UPLOADS_DIR=/tmp/uploads"
 if [ "$USE_VERTEX" = "true" ]; then
@@ -110,7 +109,7 @@ if [ "$USE_VERTEX" = "true" ]; then
 else
   SECRETS="${SECRETS},GEMINI_API_KEY=ehs-gemini-api-key:latest"
 fi
-for v in TELEGRAM_CHAT_ID WA_TARGET_PHONE; do
+for v in WA_TARGET_PHONE; do
   val="$(envval $v)"; [ -n "$val" ] && ENV_VARS="${ENV_VARS},${v}=${val}"
 done
 

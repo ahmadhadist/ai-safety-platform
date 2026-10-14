@@ -19,14 +19,14 @@ Record at 1440×900, browser zoom 100 %, logged in as admin. Do one dry run firs
 |---|---|---|---|
 | 0:00–0:15 | Slide or dashboard | — | "395 million workers are injured every year. Most incidents start as something visible. Cameras record it; nobody watches." |
 | 0:15–0:35 | **Overview** | Hover the trend bars, point at hotspot list | "This is SafeSight. Every inspection lands here: compliance rate, stop-work orders, and which areas are most dangerous: Scaffold Zone and Welding Bay." |
-| 0:35–1:15 | **AI Inspection → Photo** | Keep *Auto-detect*, click sample **Hot work**, run | "I don't tell it what to look for. Gemini recognises angle grinding, picks our Hot Work policy, and finds two hazards: no PPE, and sparks flying at gas cylinders. Each one is boxed. It's critical, so a stop-work order is issued and the supervisor gets this on Telegram (show phone). Notice the face is blurred in the stored evidence." |
+| 0:35–1:15 | **AI Inspection → Photo** | Keep *Auto-detect*, click sample **Hot work**, run | "I don't tell it what to look for. Gemini recognises angle grinding, picks our Hot Work policy, and finds two hazards: no PPE, and sparks flying at gas cylinders. Each one is boxed. It's critical, so a stop-work order is issued and the supervisor gets this on WhatsApp (show phone). Notice the face is blurred in the stored evidence." |
 | 1:15–1:50 | **AI Inspection → CCTV video** | Sample **Forklift aisle**, run, click the timeline event | "Photos are one thing; sites have hours of CCTV. Here's a clip. Gemini watches it and returns a timeline. Click, and we jump to the second the worker on his phone walks into the forklift lane." |
 | 1:50–2:15 | **Inspection History → View → Generate incident report** | Scroll to 5 Whys and actions table | "One click turns the finding into an investigation report: five whys, root cause, and corrective actions ranked by the hierarchy of controls, engineering before PPE. Print, sign, done." |
 | 2:15–2:40 | **EHS Co-Pilot** | Click *Which location is our biggest risk…* | "Managers can just ask. The agent decides which database tools to call, here risk trends and recent violations, and answers with real numbers. You can see exactly what it queried." |
 | 2:40–2:55 | **Safety Policies** | Click *Upload Safety Standard / PDF* (pre-picked SOP) | "New rule? Upload the SOP PDF. Gemini compiles it into an enforceable policy: PPE, prerequisites, limits." |
 | 2:55–3:00 | Dashboard | — | "SafeSight: AI that sees hazards before they become incidents. Built on Gemini, Vertex AI and Cloud Run." |
 
-**Before recording:** have Telegram open on a phone next to the screen, prepare a short SOP PDF, and run each sample
+**Before recording:** have WhatsApp open on a phone next to the screen, prepare a short SOP PDF, and run each sample
 once so you know the timings (photo ~10–15 s, video ~10 s on Vertex AI).
 
 ## 3. Why it stands out

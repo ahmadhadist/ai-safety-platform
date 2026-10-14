@@ -18,14 +18,14 @@ bahaya, dan menghentikan pekerjaan dalam hitungan detik, sambil memblur wajah da
 |---|---|---|
 | 0:00–0:15 | Slide / Overview | Buka dengan masalah: 395 juta pekerja cedera per tahun, CCTV tidak ditonton |
 | 0:15–0:35 | **Overview** | Tunjukkan tren, stop-work orders, lokasi paling rawan |
-| 0:35–1:15 | **AI Inspection → Photo** | Biarkan *Auto-detect*, klik contoh **Hot work**, jalankan. Tunjukkan kotak bahaya, Stop Work, notifikasi Telegram di HP, dan wajah yang diblur |
+| 0:35–1:15 | **AI Inspection → Photo** | Biarkan *Auto-detect*, klik contoh **Hot work**, jalankan. Tunjukkan kotak bahaya, Stop Work, notifikasi WhatsApp di HP, dan wajah yang diblur |
 | 1:15–1:50 | **AI Inspection → CCTV video** | Contoh **Forklift aisle**, jalankan, klik event di timeline untuk loncat ke detiknya |
 | 1:50–2:15 | **Inspection History → View → Generate incident report** | Tunjukkan 5-Why, akar masalah, tabel tindakan korektif |
 | 2:15–2:40 | **EHS Co-Pilot** | Klik pertanyaan "biggest risk"; tunjukkan jejak tool yang dipanggil agent |
 | 2:40–2:55 | **Safety Policies** | Upload PDF SOP, tunjukkan aturan yang terbentuk |
 | 2:55–3:00 | Overview | Penutup: *"AI that sees hazards before they become incidents."* |
 
-**Persiapan:** HP dengan Telegram terbuka di samping layar, satu PDF SOP pendek, dan uji coba sekali sebelum
+**Persiapan:** HP dengan WhatsApp terbuka di samping layar, satu PDF SOP pendek, dan uji coba sekali sebelum
 merekam (foto ±10–15 detik, video ±10 detik di Vertex AI).
 
 ## 3. Nilai jual utama
