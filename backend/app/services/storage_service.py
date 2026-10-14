@@ -1,5 +1,9 @@
+import mimetypes
 import os
+import re
 import uuid
+from collections import OrderedDict
+
 from google.cloud import storage
 
 BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "ehs-safety-inspections-bucket")
@@ -13,6 +17,10 @@ def _ext(mime_type: str) -> str:
         if key in m:
             return ext
     return "jpg"
+
+
+LIBRARY_PREFIX = "library/"
+_CACHE_LIMIT_BYTES = 80 * 1024 * 1024  # small in-process cache so video range requests don't re-download from GCS
 
 
 class StorageService:
@@ -55,13 +63,89 @@ class StorageService:
         return f"{PUBLIC_API_BASE_URL}/evidence/{filename}"
 
     def read_evidence(self, object_name: str):
-        """Return (bytes, content_type) for a stored violation photo, or None if it does not exist."""
-        if not self.enabled or not object_name.startswith("violations/"):
+        """Return (bytes, content_type) for stored evidence or a demo-library file, or None if it does not exist."""
+        if not object_name.startswith(("violations/", LIBRARY_PREFIX)) or ".." in object_name:
             return None
-        blob = self.bucket.blob(object_name)
-        if not blob.exists():
-            return None
-        return blob.download_as_bytes(), blob.content_type or "image/jpeg"
+        cache = self.__dict__.setdefault("_cache", OrderedDict())
+        if object_name in cache:
+            cache.move_to_end(object_name)
+            return cache[object_name]
+        if self.enabled:
+            blob = self.bucket.blob(object_name)
+            if not blob.exists():
+                return None
+            found = (blob.download_as_bytes(), blob.content_type or mimetypes.guess_type(object_name)[0] or "application/octet-stream")
+        else:
+            path = os.path.join(LOCAL_UPLOADS_DIR, object_name)
+            if not os.path.isfile(path):
+                return None
+            with open(path, "rb") as f:
+                found = (f.read(), mimetypes.guess_type(path)[0] or "application/octet-stream")
+        cache[object_name] = found
+        while sum(len(v[0]) for v in cache.values()) > _CACHE_LIMIT_BYTES and len(cache) > 1:
+            cache.popitem(last=False)
+        return found
+
+    # ---------------------------------------------------------------- Demo library
+    def library_url(self, name: str) -> str:
+        return f"{PUBLIC_API_BASE_URL}/evidence/{LIBRARY_PREFIX}{os.path.basename(name)}"
+
+    def list_library(self) -> list:
+        """Demo media kept in the bucket under library/, newest first."""
+        items = []
+        if self.enabled:
+            for blob in self.client.list_blobs(BUCKET_NAME, prefix=LIBRARY_PREFIX):
+                name = blob.name[len(LIBRARY_PREFIX):]
+                if name:
+                    items.append((name, blob.content_type, blob.size, blob.updated.isoformat() if blob.updated else ""))
+        else:
+            folder = os.path.join(LOCAL_UPLOADS_DIR, LIBRARY_PREFIX)
+            if os.path.isdir(folder):
+                for name in os.listdir(folder):
+                    path = os.path.join(folder, name)
+                    items.append((name, mimetypes.guess_type(name)[0], os.path.getsize(path), str(os.path.getmtime(path))))
+        items.sort(key=lambda i: i[3], reverse=True)
+        return [
+            {
+                "name": name,
+                "title": os.path.splitext(name)[0].replace("_", " "),
+                "kind": "video" if (ctype or "").startswith("video/") else "image",
+                "content_type": ctype,
+                "size": size,
+                "url": self.library_url(name),
+            }
+            for name, ctype, size, _ in items
+        ]
+
+    def add_to_library(self, data: bytes, filename: str, mime_type: str) -> dict:
+        safe = re.sub(r"[^A-Za-z0-9 ._-]+", "", os.path.basename(filename)).strip().replace(" ", "_") or f"media_{uuid.uuid4().hex[:6]}.{_ext(mime_type)}"
+        if self.enabled:
+            self.bucket.blob(LIBRARY_PREFIX + safe).upload_from_string(data, content_type=mime_type)
+        else:
+            os.makedirs(os.path.join(LOCAL_UPLOADS_DIR, LIBRARY_PREFIX), exist_ok=True)
+            with open(os.path.join(LOCAL_UPLOADS_DIR, LIBRARY_PREFIX, safe), "wb") as f:
+                f.write(data)
+        self.__dict__.get("_cache", {}).pop(LIBRARY_PREFIX + safe, None)
+        return {"name": safe, "url": self.library_url(safe)}
+
+    def delete_from_library(self, name: str) -> bool:
+        object_name = LIBRARY_PREFIX + os.path.basename(name)
+        self.__dict__.get("_cache", {}).pop(object_name, None)
+        if self.enabled:
+            blob = self.bucket.blob(object_name)
+            if not blob.exists():
+                return False
+            blob.delete()
+            return True
+        path = os.path.join(LOCAL_UPLOADS_DIR, object_name)
+        if not os.path.isfile(path):
+            return False
+        os.remove(path)
+        return True
+
+    def read_library(self, name: str):
+        """(bytes, content_type) of a library item, or None."""
+        return self.read_evidence(LIBRARY_PREFIX + os.path.basename(name))
 
     def purge_compliant_photo(self) -> None:
         """Foto aman (100% compliant) langsung di-purge dari memori RAM (Zero-Storage & Privacy-Preserved)."""

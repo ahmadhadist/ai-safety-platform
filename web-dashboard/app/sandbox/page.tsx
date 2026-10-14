@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   UploadCloud, CheckCircle2, OctagonX, AlertTriangle, ScanEye, HeartPulse, Sun, ShieldCheck, Cpu, BellRing,
-  MapPin, Thermometer, ChevronDown, Image as ImageIcon, Lightbulb, Users, Sparkles, Video, EyeOff,
+  MapPin, Thermometer, ChevronDown, Image as ImageIcon, Lightbulb, Users, Sparkles, Video, EyeOff, Library, Save, Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import EvidenceViewer from "@/components/EvidenceViewer";
@@ -26,6 +26,16 @@ const SAMPLES: Record<Mode, { file: string; label: string; location: string }[]>
   ],
 };
 
+type LibraryItem = { name: string; title: string; kind: "image" | "video"; url: string; size: number };
+
+// Suggested location for the seeded demo media (matched on file-name prefix).
+const LOCATION_HINTS: [RegExp, string][] = [
+  [/forklift|warehouse/i, "Warehouse Dock 2"],
+  [/scaffold|ladder|height/i, "Scaffold Zone - Unit 4"],
+  [/electric|panel/i, "Substation B"],
+  [/weld|hot.?work|grind/i, "Welding Bay A"],
+];
+
 const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const LOCATIONS = ["Welding Bay A", "Scaffold Zone - Unit 4", "Assembly Line 1", "Warehouse Dock 2", "Substation B", "Tank Farm - T3"];
 
@@ -41,6 +51,9 @@ export default function SandboxPage() {
   const [policyId, setPolicyId] = useState(AUTO);
   const [location, setLocation] = useState(LOCATIONS[0]);
   const [file, setFile] = useState<File | null>(null);
+  const [library, setLibrary] = useState<LibraryItem[]>([]);
+  const [libraryItem, setLibraryItem] = useState<LibraryItem | null>(null);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [showSensors, setShowSensors] = useState(false);
@@ -57,14 +70,17 @@ export default function SandboxPage() {
     api.get("/policies/templates").then((res) => {
       setPolicies(res.data);
     }).catch(console.error);
+    loadLibrary();
   }, []);
 
+  const loadLibrary = () => api.get("/media/library").then((res) => setLibrary(res.data)).catch(() => setLibrary([]));
+
   useEffect(() => {
-    if (!file) return setPreviewUrl(null);
+    if (!file) return setPreviewUrl(libraryItem ? libraryItem.url : null);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, libraryItem]);
 
   useEffect(() => {
     if (!loading) return;
@@ -78,6 +94,7 @@ export default function SandboxPage() {
   const switchMode = (m: Mode) => {
     setMode(m);
     setFile(null);
+    setLibraryItem(null);
     setResult(null);
     setError("");
   };
@@ -85,8 +102,33 @@ export default function SandboxPage() {
   const pickFile = (f: File | null | undefined) => {
     if (!f || !(mode === "photo" ? /^image\//.test(f.type) : /^video\/|\.(mp4|mov|webm)$/i.test(f.type || f.name))) return;
     setFile(f);
+    setLibraryItem(null);
     setResult(null);
     setError("");
+  };
+
+  const selectLibraryItem = (item: LibraryItem) => {
+    setFile(null);
+    setLibraryItem(item);
+    setResult(null);
+    setError("");
+    setPolicyId(AUTO);
+    const hint = LOCATION_HINTS.find(([re]) => re.test(item.name));
+    if (hint) setLocation(hint[1]);
+  };
+
+  const saveToLibrary = async () => {
+    if (!file) return;
+    setSavingToLibrary(true);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      await api.post("/media/library", form, { headers: { "Content-Type": "multipart/form-data" } });
+      await loadLibrary();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Could not save to the library.");
+    }
+    setSavingToLibrary(false);
   };
 
   const loadSample = async (s: { file: string; location: string }) => {
@@ -97,12 +139,13 @@ export default function SandboxPage() {
   };
 
   const runInspection = async () => {
-    if (!file) return;
+    if (!file && !libraryItem) return;
     setLoading(true);
     setError("");
     setResult(null);
     const formData = new FormData();
-    formData.append(mode === "photo" ? "image" : "video", file);
+    if (libraryItem) formData.append("library_object", libraryItem.name);
+    else if (file) formData.append(mode === "photo" ? "image" : "video", file);
     formData.append("policy_id", policyId);
     formData.append("location", location);
     if (mode === "photo" && showSensors) {
@@ -210,14 +253,51 @@ export default function SandboxPage() {
               )}
               <input type="file" className="hidden" ref={fileInputRef} accept={mode === "photo" ? "image/*" : "video/*"} onChange={(e) => pickFile(e.target.files?.[0])} />
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-500">
-              <ImageIcon size={14} /> Try a sample:
-              {SAMPLES[mode].map((s) => (
-                <button key={s.file} onClick={() => loadSample(s)} className="px-2 py-1 rounded-lg border border-slate-200 hover:border-blue-400 hover:text-blue-600 transition-colors">
-                  {s.label}
-                </button>
-              ))}
-            </div>
+            {file && (
+              <button
+                onClick={saveToLibrary}
+                disabled={savingToLibrary}
+                className="mt-2 text-xs flex items-center gap-1.5 text-slate-500 hover:text-blue-600 disabled:opacity-50"
+              >
+                <Save size={13} /> {savingToLibrary ? "Saving…" : "Save this file to the demo library"}
+              </button>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Library size={13} /> Demo library <span className="normal-case font-normal text-slate-400">· stored in Cloud Storage</span>
+            </label>
+            {library.filter((i) => i.kind === (mode === "photo" ? "image" : "video")).length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {library.filter((i) => i.kind === (mode === "photo" ? "image" : "video")).map((item) => {
+                  const active = libraryItem?.name === item.name;
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => selectLibraryItem(item)}
+                      title={item.title}
+                      className={`relative rounded-lg overflow-hidden border-2 text-left transition-all ${active ? "border-blue-500 ring-2 ring-blue-100" : "border-transparent hover:border-slate-300"}`}
+                    >
+                      {item.kind === "image"
+                        ? <img src={item.url} alt={item.title} className="w-full h-16 object-cover" loading="lazy" />
+                        : <video src={`${item.url}#t=1`} className="w-full h-16 object-cover bg-black" preload="metadata" muted />}
+                      {active && <span className="absolute top-1 right-1 bg-blue-600 text-white rounded-full p-0.5"><Check size={10} /></span>}
+                      <span className="block text-[10px] text-slate-600 truncate px-1 py-0.5 bg-white">{item.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-500">
+                <ImageIcon size={14} /> Try a sample:
+                {SAMPLES[mode].map((s) => (
+                  <button key={s.file} onClick={() => loadSample(s)} className="px-2 py-1 rounded-lg border border-slate-200 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {mode === "photo" && <div className="border border-slate-200 rounded-xl">
@@ -240,7 +320,7 @@ export default function SandboxPage() {
 
           <button
             onClick={runInspection}
-            disabled={loading || !file}
+            disabled={loading || (!file && !libraryItem)}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
           >
             <ScanEye size={18} /> {loading ? `Analysing… ${elapsed}s` : "Run AI Inspection"}

@@ -2,6 +2,7 @@ import copy
 import io
 import math
 import mimetypes
+import os
 import re
 from collections import Counter
 from datetime import datetime, timedelta
@@ -287,10 +288,56 @@ def _evidence_key(location: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "-", location).strip("-") or "area"
 
 
+# ---------------------------------------------------------------- Demo media library (GCS library/)
+@router.get("/media/library")
+def list_media_library(current_user: User = Depends(get_current_user)):
+    return storage_service.list_library()
+
+
+@router.post("/media/library")
+async def add_media_to_library(file: UploadFile = File(...), current_user: User = Depends(require_admin)):
+    data = await file.read()
+    mime_type = file.content_type or mimetypes.guess_type(file.filename or "")[0] or ""
+    if not mime_type.startswith(("image/", "video/")):
+        mime_type = mimetypes.guess_type(file.filename or "")[0] or ""
+    if not mime_type.startswith(("image/", "video/")):
+        raise HTTPException(status_code=400, detail="Only images and videos can be added")
+    if len(data) > MAX_VIDEO_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 25 MB)")
+    return storage_service.add_to_library(data, file.filename or "media", mime_type)
+
+
+@router.delete("/media/library/{name}")
+def delete_media_from_library(name: str, current_user: User = Depends(require_admin)):
+    if not storage_service.delete_from_library(name):
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"status": "deleted"}
+
+
+async def _read_media(upload: Optional[UploadFile], library_object: Optional[str], kind: str):
+    """Bytes + MIME from an upload, or straight from the demo library in Cloud Storage (no browser round trip)."""
+    if library_object:
+        found = await run_in_threadpool(storage_service.read_library, library_object)
+        if not found:
+            raise HTTPException(status_code=404, detail="Library item not found")
+        data, mime_type = found
+    elif upload is not None:
+        data = await upload.read()
+        mime_type = upload.content_type or ""
+        if not mime_type.startswith(f"{kind}/"):
+            mime_type = mimetypes.guess_type(upload.filename or "")[0] or ""
+    else:
+        raise HTTPException(status_code=400, detail=f"Upload a {kind} or pick one from the library")
+    if not mime_type.startswith(f"{kind}/"):
+        raise HTTPException(status_code=400, detail=f"Expected an {kind} file" if kind == "image" else "Upload a video file (MP4, WebM or MOV)")
+    return data, mime_type
+
+
 @router.post("/inspections/audit", response_model=AuditResult)
 async def process_inspection_audit(
     background_tasks: BackgroundTasks,
-    image: UploadFile = File(...),
+    image: Optional[UploadFile] = File(None),
+    library_object: Optional[str] = Form(None),
     policy_id: Optional[str] = Form(AUTO_POLICY),
     location: Optional[str] = Form(None),
     permit_id: Optional[str] = Form(None),
@@ -308,8 +355,7 @@ async def process_inspection_audit(
     if sensor_temperature_c is not None or sensor_humidity_pct is not None:
         rules_context["sensor_data_fusion"] = {"temperature_c": sensor_temperature_c, "humidity_pct": sensor_humidity_pct}
 
-    image_bytes = await image.read()
-    mime_type = image.content_type or "image/jpeg"
+    image_bytes, mime_type = await _read_media(image, library_object, "image")
 
     # 1. Analyse in memory first (no storage cost until we know it is evidence).
     try:
@@ -371,21 +417,17 @@ async def process_inspection_audit(
 @router.post("/inspections/video", response_model=VideoAuditResult)
 async def process_video_audit(
     background_tasks: BackgroundTasks,
-    video: UploadFile = File(...),
+    video: Optional[UploadFile] = File(None),
+    library_object: Optional[str] = Form(None),
     policy_id: Optional[str] = Form(AUTO_POLICY),
     location: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """CCTV clip review: Gemini watches the video and returns a timestamped violation timeline."""
-    video_bytes = await video.read()
+    video_bytes, mime_type = await _read_media(video, library_object, "video")
     if len(video_bytes) > MAX_VIDEO_BYTES:
         raise HTTPException(status_code=413, detail="Clip too large: keep it under 25 MB (about 30-60 s of 720p).")
-    mime_type = video.content_type or ""
-    if not mime_type.startswith("video/"):
-        mime_type = mimetypes.guess_type(video.filename or "")[0] or ""
-    if not mime_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="Upload a video file (MP4, WebM or MOV)")
     location = (location or "Unspecified area").strip()[:120]
     policy, rules_context = _policy_context(db, policy_id, location)
 
@@ -403,8 +445,11 @@ async def process_video_audit(
 
     retention = "AUTO-PURGED (privacy preserved)"
     if result.status == "NON_COMPLIANT":
-        result.video_url = storage_service.upload_violation_evidence(
-            image_bytes=video_bytes, mime_type=mime_type, permit_code=_evidence_key(location), severity=result.severity
+        result.video_url = (
+            storage_service.library_url(library_object) if library_object
+            else storage_service.upload_violation_evidence(
+                image_bytes=video_bytes, mime_type=mime_type, permit_code=_evidence_key(location), severity=result.severity
+            )
         )
         retention = "VIDEO EVIDENCE KEPT (" + ("GCS" if storage_service.enabled else "LOCAL") + ")"
         result.alerts_dispatched = notification_service.configured_channels()
