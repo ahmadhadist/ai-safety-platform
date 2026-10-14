@@ -25,6 +25,7 @@ export default function EvidenceViewer({ src, observations }: { src: string; obs
           const color = obs.is_infraction ? "border-red-500" : "border-emerald-400";
           const chip = obs.is_infraction ? "bg-red-600" : "bg-emerald-600";
           const dim = active !== null && active !== idx;
+          const stack = boxed.slice(0, n).filter(({ obs: p }) => Math.abs(p.box_2d![0] - ymin) < 40 && Math.abs(p.box_2d![1] - xmin) < 120).length;
           return (
             <div
               key={idx}
@@ -39,7 +40,7 @@ export default function EvidenceViewer({ src, observations }: { src: string; obs
                 boxShadow: obs.is_infraction ? "0 0 0 1px rgba(0,0,0,.4), 0 0 12px rgba(239,68,68,.6)" : undefined,
               }}
             >
-              <span className={`absolute -top-5 left-0 ${chip} text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap`}>
+              <span style={{ top: -20 - stack * 18 }} className={`absolute left-0 ${chip} text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap`}>
                 #{n + 1} {obs.category} · {Math.round(obs.confidence * 100)}%
               </span>
             </div>

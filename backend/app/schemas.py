@@ -43,6 +43,11 @@ class GeminiAuditOutput(BaseModel):
     observations: List[Observation]
     enforcement_action: EnforcementAction
     recommendation: str
+    spoken_warning: str = Field(
+        "",
+        description="If NON_COMPLIANT: one short, direct sentence (max 20 words) for a site loudspeaker telling the worker what to fix, "
+                    "in the language named in voice_language (default English). Empty string if compliant.",
+    )
     faces_2d: List[List[int]] = Field(
         default_factory=list,
         description="Bounding box [ymin, xmin, ymax, xmax] (0-1000) of EVERY visible human face, used to blur faces for privacy.",
@@ -56,6 +61,7 @@ class AuditResult(GeminiAuditOutput):
     policy_auto_detected: bool = False
     faces_blurred: int = 0
     audit_id: Optional[str] = None
+    live_deduplicated: bool = False
     worker_count_detected: Optional[int] = None
     health_evaluation: Optional[dict] = None
     safety_perimeter_evaluation: Optional[dict] = None

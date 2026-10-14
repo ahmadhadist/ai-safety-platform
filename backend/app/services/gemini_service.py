@@ -1,6 +1,10 @@
+import io
 import os
 import json
+import re
 import time
+import wave
+from collections import OrderedDict
 from typing import Callable, List, Literal, Optional
 
 from google import genai
@@ -25,6 +29,22 @@ POLICY_SELECTION_RULES = """
           If none fits, use the most general policy.
         - Otherwise set "applied_policy" to the title in "safety_policy".
 """
+
+
+def _rate(mime_type: Optional[str]) -> int:
+    match = re.search(r"rate=(\d+)", mime_type or "")
+    return int(match.group(1)) if match else 24000
+
+
+def _pcm_to_wav(pcm: bytes, rate: int) -> bytes:
+    """Wrap raw 16-bit mono PCM (Gemini TTS output) in a WAV container browsers can play."""
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(pcm)
+    return out.getvalue()
 
 
 class AIUnavailableError(RuntimeError):
@@ -63,8 +83,14 @@ class GeminiAuditService:
             self.client = genai.Client(api_key=api_key or "missing-key", http_options=HTTP_OPTIONS)
         self._cooldown_until: dict = {}  # model -> monotonic time; set when its quota is exhausted (429)
         self.backend_name = "Vertex AI" if use_vertex else "Gemini API"
+        # Models that support thinking_level=LOW (3.x Flash); used for live monitoring.
+        self.fast_models = [m for m in self.models if m.startswith("gemini-3")] or self.models
+        self.tts_models = [m.strip() for m in os.environ.get(
+            "GEMINI_TTS_MODELS", "gemini-3.8-flash-tts,gemini-2.5-flash-tts" if use_vertex else "gemini-3.8-flash-tts,gemini-2.5-flash-preview-tts"
+        ).split(",") if m.strip()]
+        self._tts_cache: "OrderedDict[tuple, bytes]" = OrderedDict()
 
-    def _generate(self, contents, config: types.GenerateContentConfig):
+    def _generate(self, contents, config: types.GenerateContentConfig, models: Optional[List[str]] = None):
         """Try each model in the fallback chain; return (response, model_name, latency_ms)."""
         if not self.available:
             raise AIUnavailableError("Gemini is not configured (set GEMINI_API_KEY or GOOGLE_GENAI_USE_VERTEXAI).")
@@ -72,7 +98,7 @@ class GeminiAuditService:
         for round_no in range(RETRY_ROUNDS):
             if round_no:
                 time.sleep(2 * round_no)  # back off before sweeping the chain again
-            for model_name in self.models:
+            for model_name in models or self.models:
                 if self._cooldown_until.get(model_name, 0) > time.monotonic():
                     continue
                 started = time.monotonic()
@@ -87,7 +113,8 @@ class GeminiAuditService:
         raise AIUnavailableError(f"All Gemini models failed: {last_error}")
 
     # ------------------------------------------------------------------ Vision audit
-    def analyze_permit_safety(self, image_bytes: bytes, mime_type: str, rules_context: dict) -> AuditResult:
+    def analyze_permit_safety(self, image_bytes: bytes, mime_type: str, rules_context: dict, fast: bool = False) -> AuditResult:
+        """fast=True (live monitoring) uses a low thinking level: ~2-4 s per frame instead of ~10 s."""
         system_instruction = (
             "You are an expert Environmental Health and Safety (EHS) inspector. "
             "Evaluate the workplace image strictly against the safety policy provided. "
@@ -101,6 +128,8 @@ class GeminiAuditService:
         {json.dumps(rules_context, indent=2)}
 {POLICY_SELECTION_RULES}
         PRIVACY: put the bounding box of EVERY visible human face in "faces_2d" (they will be blurred before storage).
+        LOUDSPEAKER: if NON_COMPLIANT, write "spoken_warning" in {rules_context.get("voice_language", "English")}: one short, firm,
+        respectful sentence addressed to the worker(s) saying exactly what to do now (e.g. put on the welding helmet, clip on the lanyard).
 
         Identify missing required PPE, unsafe acts, unsafe conditions, forbidden hazards and industrial-hygiene risks.
 
@@ -136,7 +165,9 @@ class GeminiAuditService:
                 response_mime_type="application/json",
                 response_schema=GeminiAuditOutput,
                 temperature=0.1,
+                thinking_config=types.ThinkingConfig(thinking_level="LOW") if fast else None,
             ),
+            models=self.fast_models if fast else None,
         )
         parsed: GeminiAuditOutput = response.parsed
         if parsed is None:
@@ -146,6 +177,30 @@ class GeminiAuditService:
         result.model_used = model_name
         result.latency_ms = latency_ms
         return result
+
+    # ------------------------------------------------------------------ Loudspeaker voice (TTS)
+    def synthesize_warning(self, text: str, language: str = "English") -> bytes:
+        """Gemini TTS -> WAV bytes for an on-site loudspeaker warning. Identical warnings are served from a cache."""
+        key = (text.strip(), language)
+        if key in self._tts_cache:
+            self._tts_cache.move_to_end(key)
+            return self._tts_cache[key]
+        response, _, _ = self._generate(
+            contents=f"Read this safety announcement in {language}, in an urgent, firm but calm loudspeaker voice: {text}",
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore"))
+                ),
+            ),
+            models=self.tts_models,
+        )
+        part = response.candidates[0].content.parts[0].inline_data
+        audio = part.data if "wav" in (part.mime_type or "") else _pcm_to_wav(part.data, _rate(part.mime_type))
+        self._tts_cache[key] = audio
+        while len(self._tts_cache) > 64:
+            self._tts_cache.popitem(last=False)
+        return audio
 
     # ------------------------------------------------------------------ CCTV video audit
     def analyze_video(self, video_bytes: bytes, mime_type: str, rules_context: dict) -> VideoAuditResult:

@@ -23,8 +23,9 @@ Record at 1440×900, browser zoom 100 %, logged in as admin. Do one dry run firs
 | 1:15–1:50 | **AI Inspection → CCTV video** | Sample **Forklift aisle**, run, click the timeline event | "Photos are one thing; sites have hours of CCTV. Here's a clip. Gemini watches it and returns a timeline. Click, and we jump to the second the worker on his phone walks into the forklift lane." |
 | 1:50–2:15 | **Inspection History → View → Generate incident report** | Scroll to 5 Whys and actions table | "One click turns the finding into an investigation report: five whys, root cause, and corrective actions ranked by the hierarchy of controls, engineering before PPE. Print, sign, done." |
 | 2:15–2:40 | **EHS Co-Pilot** | Click *Which location is our biggest risk…* | "Managers can just ask. The agent decides which database tools to call, here risk trends and recent violations, and answers with real numbers. You can see exactly what it queried." |
-| 2:40–2:55 | **Safety Policies** | Click *Upload Safety Standard / PDF* (pre-picked SOP) | "New rule? Upload the SOP PDF. Gemini compiles it into an enforceable policy: PPE, prerequisites, limits." |
-| 2:55–3:00 | Dashboard | — | "SafeSight: AI that sees hazards before they become incidents. Built on Gemini, Vertex AI and Cloud Run." |
+| 2:40–3:00 | **Live Monitor** (climax) | Source *Demo clip* or a real camera, voice *Bahasa Indonesia*, **Start monitoring**; let the siren and voice play | "And this is the moment that matters. SafeSight watches the camera continuously. The second a worker walks into the forklift lane on his phone, the site loudspeaker tells him, in his own language, to stop. Hazards before they become incidents." |
+
+Policy upload from PDF is a good extra if time allows (Safety Policies → *Upload Safety Standard / PDF*).
 
 **Before recording:** have WhatsApp open on a phone next to the screen, prepare a short SOP PDF, and run each sample
 once so you know the timings (photo ~10–15 s, video ~10 s on Vertex AI).

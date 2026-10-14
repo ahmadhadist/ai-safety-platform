@@ -22,8 +22,7 @@ bahaya, dan menghentikan pekerjaan dalam hitungan detik, sambil memblur wajah da
 | 1:15–1:50 | **AI Inspection → CCTV video** | Contoh **Forklift aisle**, jalankan, klik event di timeline untuk loncat ke detiknya |
 | 1:50–2:15 | **Inspection History → View → Generate incident report** | Tunjukkan 5-Why, akar masalah, tabel tindakan korektif |
 | 2:15–2:40 | **EHS Co-Pilot** | Klik pertanyaan "biggest risk"; tunjukkan jejak tool yang dipanggil agent |
-| 2:40–2:55 | **Safety Policies** | Upload PDF SOP, tunjukkan aturan yang terbentuk |
-| 2:55–3:00 | Overview | Penutup: *"AI that sees hazards before they become incidents."* |
+| 2:40–3:00 | **Live Monitor** (klimaks) | Pilih klip demo atau kamera asli, bahasa suara *Bahasa Indonesia*, klik **Start monitoring**. Biarkan sirene dan suara peringatan terdengar, lalu tutup dengan *"AI that sees hazards before they become incidents."* |
 
 **Persiapan:** HP dengan WhatsApp terbuka di samping layar, satu PDF SOP pendek, dan uji coba sekali sebelum
 merekam (foto ±10–15 detik, video ±10 detik di Vertex AI).

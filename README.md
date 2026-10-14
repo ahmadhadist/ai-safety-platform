@@ -28,6 +28,7 @@ visible unsafe acts and conditions: a missing harness, a pedestrian in a forklif
 | Capability | What happens | Gemini feature |
 |---|---|---|
 | **Photo inspection with visual evidence** | Every finding is drawn as a labelled box on the image, with severity and confidence | Spatial understanding (`box_2d`), structured output |
+| **Live Monitor with loudspeaker** | Point a camera at the work area: frames are checked every few seconds (~4 s response), hazards boxed live, and a spoken warning is played in the workers' language (Bahasa Indonesia, English, Japanese, Vietnamese, Thai…) | Low-latency vision (`thinking_level=LOW`) + Gemini TTS |
 | **CCTV video review** | Upload a clip; get a timestamped violation timeline and jump to each moment | Native video understanding |
 | **Policy auto-detection** | Gemini identifies the activity (e.g. hot work, working at height) and picks the matching company policy | Reasoning over policy list |
 | **SOP → enforceable rules** | Upload an SOP PDF; Gemini compiles PPE, prerequisites, forbidden hazards and limits into a policy | Native PDF understanding |
@@ -93,6 +94,9 @@ with Gemini on Vertex AI. Re-run it to redeploy.
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `POST` | `/api/v1/inspections/audit` | Photo inspection (`policy_id=auto` to auto-detect) |
+| `POST` | `/api/v1/inspections/audit` (`mode=live`) | Live-frame check: fast path, safe frames not stored, repeats de-duplicated |
+| `POST` | `/api/v1/voice/warning` | Loudspeaker announcement (Gemini TTS, WAV) |
+| `GET`  | `/api/v1/media/library` | Demo media library stored in Cloud Storage |
 | `POST` | `/api/v1/inspections/video` | CCTV clip inspection with timeline |
 | `POST` | `/api/v1/inspections/{id}/report` | Incident investigation report |
 | `GET`  | `/api/v1/inspections/history` | Inspection history with evidence |
@@ -110,7 +114,7 @@ A SwiftUI companion app (`mobile-ios/`) adds voice SOS reporting.
 
 ## Roadmap
 
-- Live RTSP camera streams with continuous monitoring
+- RTSP/ONVIF ingestion so fixed CCTV cameras feed the Live Monitor without a browser
 - Digital work permits with crew manifests (already in the codebase, disabled for this release)
 - On-device pre-filtering for sites with poor connectivity
 - Evaluation on real labelled CCTV footage

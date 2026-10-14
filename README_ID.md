@@ -19,6 +19,7 @@ eskalasi dalam hitungan detik. Wajah diblur dan rekaman pekerjaan yang aman tida
 | Kemampuan | Apa yang terjadi | Fitur Gemini |
 |---|---|---|
 | **Inspeksi foto dengan bukti visual** | Setiap temuan digambar sebagai kotak berlabel di foto | Spatial understanding, structured output |
+| **Live Monitor + pengeras suara** | Kamera dipantau terus (respons ±4 detik), bahaya ditandai langsung, dan peringatan diucapkan dalam bahasa pekerja | Vision cepat + Gemini TTS |
 | **Review video CCTV** | Upload klip, dapatkan timeline pelanggaran dengan timestamp | Native video understanding |
 | **Auto-detect policy** | Gemini mengenali aktivitas dan memilih policy yang cocok | Reasoning |
 | **SOP PDF → aturan** | Upload SOP, Gemini menyusun aturan APD, prasyarat, dan bahaya terlarang | Native PDF |

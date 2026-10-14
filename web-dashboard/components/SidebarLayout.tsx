@@ -4,7 +4,7 @@ import { BRAND } from "@/lib/brand";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { LayoutDashboard, Camera, ClipboardList, Settings, ShieldAlert, LogOut, Bot, Users, History } from "lucide-react";
+import { LayoutDashboard, Camera, Radio, ClipboardList, Settings, ShieldAlert, LogOut, Bot, Users, History } from "lucide-react";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,6 +44,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <Link href="/sandbox" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/sandbox' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
               <Camera size={20} className="text-purple-400" />
               <span>AI Inspection</span>
+            </Link>
+            <Link href="/live" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/live' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>
+              <Radio size={20} className="text-red-400" />
+              <span>Live Monitor</span>
             </Link>
             {process.env.NEXT_PUBLIC_ENABLE_PERMITS === "true" && (
               <Link href="/permits" className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/permits' ? 'bg-slate-800' : 'hover:bg-slate-800'}`}>

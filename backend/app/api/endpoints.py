@@ -4,12 +4,14 @@ import math
 import mimetypes
 import os
 import re
+import time
 from collections import Counter
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 import PyPDF2
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel
 from fastapi.concurrency import run_in_threadpool
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -237,6 +239,8 @@ def _reconcile_headcount(result: AuditResult, manifest: list) -> None:
 
 
 AUTO_POLICY = "auto"
+LIVE_DEDUP_SECONDS = 60
+_live_last_event: dict = {}
 MAX_VIDEO_BYTES = 25 * 1024 * 1024
 
 
@@ -341,6 +345,8 @@ async def process_inspection_audit(
     policy_id: Optional[str] = Form(AUTO_POLICY),
     location: Optional[str] = Form(None),
     permit_id: Optional[str] = Form(None),
+    mode: str = Form("standard"),
+    voice_language: Optional[str] = Form(None),
     sensor_temperature_c: float = Form(None),
     sensor_humidity_pct: float = Form(None),
     db: Session = Depends(get_db),
@@ -354,12 +360,15 @@ async def process_inspection_audit(
     policy, rules_context = _policy_context(db, str(permit.template_id) if permit else policy_id, location)
     if sensor_temperature_c is not None or sensor_humidity_pct is not None:
         rules_context["sensor_data_fusion"] = {"temperature_c": sensor_temperature_c, "humidity_pct": sensor_humidity_pct}
+    if voice_language:
+        rules_context["voice_language"] = voice_language[:40]
+    live = mode == "live"
 
     image_bytes, mime_type = await _read_media(image, library_object, "image")
 
     # 1. Analyse in memory first (no storage cost until we know it is evidence).
     try:
-        result = await run_in_threadpool(gemini_service.analyze_permit_safety, image_bytes, mime_type, rules_context)
+        result = await run_in_threadpool(gemini_service.analyze_permit_safety, image_bytes, mime_type, rules_context, live)
     except AIUnavailableError as e:
         # Never fabricate a verdict for a safety decision: fail loudly and record nothing.
         raise HTTPException(status_code=503, detail=f"AI inspector unavailable, no verdict recorded. {e}")
@@ -374,6 +383,19 @@ async def process_inspection_audit(
     _normalize_enforcement(result)
     if permit and result.enforcement_action == "STOP_WORK":
         permit.status = PermitStatus.SUSPENDED
+
+    # Live monitoring: safe frames are never recorded, and a repeat of the same hazard at the same spot within
+    # LIVE_DEDUP_SECONDS is shown/voiced on screen but not recorded or escalated again.
+    if live:
+        if result.status == "COMPLIANT":
+            result.data_retention_policy = "LIVE FRAME · NOT STORED"
+            return result
+        key = (location.lower(), result.risk_category)
+        if time.monotonic() - _live_last_event.get(key, -1e9) < LIVE_DEDUP_SECONDS:
+            result.live_deduplicated = True
+            result.data_retention_policy = "LIVE FRAME · DUPLICATE, NOT STORED"
+            return result
+        _live_last_event[key] = time.monotonic()
 
     # 2. Smart tiered retention: violations are kept as evidence (faces blurred), compliant photos are purged.
     evidence_bytes = image_bytes
@@ -497,6 +519,24 @@ def incident_report(audit_id: str, regenerate: bool = False, db: Session = Depen
     audit.ai_raw_json = {**raw, "incident_report": report.model_dump()}  # reassign so SQLAlchemy persists the JSONB change
     db.commit()
     return report
+
+
+class VoiceRequest(BaseModel):
+    text: str
+    language: str = "English"
+
+
+@router.post("/voice/warning")
+def voice_warning(req: VoiceRequest, current_user: User = Depends(get_current_user)):
+    """Loudspeaker announcement for a detected hazard, synthesised with Gemini TTS (WAV)."""
+    text = req.text.strip()[:300]
+    if not text:
+        raise HTTPException(status_code=400, detail="Nothing to say")
+    try:
+        audio = gemini_service.synthesize_warning(text, req.language[:40])
+    except AIUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.get("/inspections/history", response_model=AuditHistoryPaginated)
