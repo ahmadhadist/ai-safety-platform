@@ -1,0 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
+html,body{margin:0;height:100%;background:#14181F;color:#F6F4EE;font-family:'IBM Plex Sans',Arial,sans-serif;overflow:hidden}
+.stripe{position:absolute;left:0;right:0;height:16px;background:repeating-linear-gradient(135deg,#F2B705 0 28px,#14181F 28px 56px)}
+.card{position:absolute;inset:0;padding:110px 120px;display:flex;flex-direction:column;justify-content:center;gap:28px;transition:opacity .8s}
+.eyebrow{color:#F2B705;letter-spacing:4px;text-transform:uppercase;font-weight:600;font-size:20px}
+h1{font-family:'Oswald',Impact,sans-serif;font-weight:700;margin:0;line-height:1}
+p{margin:0}
+.muted{color:#B9C0CB}

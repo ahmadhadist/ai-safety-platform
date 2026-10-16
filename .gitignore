@@ -66,3 +66,6 @@ Thumbs.db
 
 # Archive scripts
 archive/
+
+# Rendered demo video (large binary)
+/demo-video/

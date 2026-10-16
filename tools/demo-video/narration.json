@@ -1,0 +1,13 @@
+[
+ ["intro", "Every year, three hundred and ninety-five million workers are injured on the job. Most serious incidents start with something a camera could have seen. Sites already have the cameras. Nobody is watching them. This is SafeSight, built on Gemini and Google Cloud."],
+ ["overview", "SafeSight is live on Cloud Run. Every inspection lands on this overview: the compliance rate, stop-work orders, a fourteen-day trend, and the hotspots. Right now, the scaffold zone and the welding bay."],
+ ["photo1", "Let's inspect a photo from the welding bay. I leave the policy on auto-detect. Gemini recognises the activity, angle grinding next to gas cylinders, and applies our Hot Work policy on its own."],
+ ["photo2", "Two hazards, each boxed on the evidence: sparks aimed at pressurised cylinders, and a worker without flame-resistant clothing or a face shield. It's critical, so SafeSight issues a stop-work order and alerts the supervisor on WhatsApp. The worker's face is blurred in the stored evidence."],
+ ["video1", "Sites record hours of CCTV that nobody reviews. Here is a simulated CCTV clip of a warehouse aisle. Gemini watches the whole clip natively and returns a timeline of violations."],
+ ["video2", "Click the event, and the video jumps to the moment a worker on his phone walks into the forklift lane."],
+ ["report", "Any finding becomes a formal investigation in one click: five whys, a root cause, and corrective actions ranked by the hierarchy of controls, engineering before personal protective equipment. Ready to print and sign."],
+ ["copilot", "Managers can simply ask. Our Gemini agent decides which database tools to call, here the risk trends and recent violations, and answers with real numbers. You can see exactly what it queried."],
+ ["policy", "New rules don't need new code. Upload a standard operating procedure as a PDF, and Gemini compiles it into an enforceable policy: required protective equipment, prerequisites, and limits."],
+ ["live1", "And this is the moment that matters. Live Monitor watches a camera continuously. When a hazard appears, the site loudspeaker warns the worker, in their own language."],
+ ["outro", "SafeSight runs on Gemini, Vertex AI and Cloud Run, with privacy by design: faces blurred, safe footage never stored, and every verdict backed by evidence. In our evaluation, it caught every violation. See hazards before they become incidents."]
+]
