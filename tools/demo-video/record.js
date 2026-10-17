@@ -213,6 +213,7 @@ const CURSOR = `
     await sleep(1500);
     await page.selectOption('select >> nth=0', { label: 'CCTV warehouse forklift aisle - simulated' });
     await moveToEl(page.locator('select').nth(1));
+    await page.selectOption('select >> nth=1', { label: 'English' });
     await sleep(700);
     await click(page.locator('button:has-text("Start monitoring")'));
   }, 0.2);
