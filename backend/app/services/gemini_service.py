@@ -185,8 +185,10 @@ class GeminiAuditService:
         if key in self._tts_cache:
             self._tts_cache.move_to_end(key)
             return self._tts_cache[key]
+        # Send only the announcement itself: with a spoken-style preamble, TTS sometimes reads the preamble aloud.
+        # The text is already written in the target language by the inspector, so the voice follows it.
         response, _, _ = self._generate(
-            contents=f"Read this safety announcement in {language}, in an urgent, firm but calm loudspeaker voice: {text}",
+            contents=text.strip(),
             config=types.GenerateContentConfig(
                 response_modalities=["AUDIO"],
                 speech_config=types.SpeechConfig(
